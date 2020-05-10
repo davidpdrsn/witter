@@ -2,6 +2,7 @@
 
 mod test_db;
 
+use serde::Serialize;
 use crate::Server;
 use crate::State;
 use crate::{make_db_pool, server};
@@ -76,20 +77,46 @@ impl BodyJson for Response {
 }
 
 pub fn get(url: &str) -> TestRequest {
-    TestRequest {
+    TestRequest::Get {
         url: url.to_string(),
     }
 }
 
+pub fn post<T: Serialize>(url: &str, body: T) -> TestRequest {
+    TestRequest::Post {
+        url: url.to_string(),
+        body: serde_json::to_value(body).unwrap(),
+    }
+}
+
 #[derive(Debug)]
-pub struct TestRequest {
-    url: String,
+pub enum TestRequest {
+    Get {
+        url: String,
+    },
+    Post {
+        url: String,
+        body: Value,
+    },
 }
 
 impl TestRequest {
     pub fn send(self, server: &mut TestServer<Server<State>>) -> Response {
-        let url = Url::parse(&format!("http://example.com{}", self.url)).unwrap();
-        let req = Request::new(Method::Get, url);
+        let req = match self {
+            TestRequest::Get { url } => {
+                let url = Url::parse(&format!("http://example.com{}", url)).unwrap();
+                Request::new(Method::Get, url)
+            }
+            TestRequest::Post { url, body } => {
+                let url = Url::parse(&format!("http://example.com{}", url)).unwrap();
+
+                let mut req = Request::new(Method::Post, url);
+                req.set_body(body.to_string());
+                req.set_content_type("application/json".parse().unwrap());
+                req
+            }
+        };
+
         server.simulate(req).unwrap()
     }
 }
