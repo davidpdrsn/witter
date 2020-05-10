@@ -5,14 +5,12 @@ use test_helpers::*;
 
 #[async_std::test]
 async fn creating_a_user() {
-    let mut server = test_server().await;
-    let test_db = TestDb::new().await;
-    let db_pool = test_db.db();
+    let mut server = test_setup().await;
 
-    // let res = Request::build().get().url("/users").send(&mut server);
-    // assert_eq!(res.status(), 200);
-    // let json = res.body_json::<Value>().await.unwrap();
-    // assert_json_eq!(json, json!([]));
+    let res = get("/users").send(&mut server);
+    assert_eq!(res.status(), 200);
+    let json = res.body_json::<Value>().await.unwrap();
+    assert_json_eq!(json, json!([]));
 
     // let url = Url::parse("http://example.com/users").unwrap();
     // let mut req = Request::new(Method::Post, url);
