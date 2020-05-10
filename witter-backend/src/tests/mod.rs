@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-mod test_helpers;
+pub mod test_helpers;
 
 use serde::Deserialize;
 use test_helpers::*;

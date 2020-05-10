@@ -13,9 +13,6 @@ pub struct TestDb {
 /// Sets up a new DB for running tests with.
 impl TestDb {
     pub async fn new() -> Self {
-        dotenv::dotenv().ok();
-        pretty_env_logger::try_init().ok();
-
         let db_url = db_url();
         create_db(&db_url).await;
         run_migrations(&db_url).await;

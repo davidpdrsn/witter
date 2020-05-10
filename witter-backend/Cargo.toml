@@ -25,6 +25,8 @@ anyhow = "1.0.28"
 rand = "0.7.3"
 argonautica = "0.2.0"
 failure = "0.1.8"
+regex = "1.3.7"
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 http-service-mock = "0.5.0"

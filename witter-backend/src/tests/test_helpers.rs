@@ -24,6 +24,10 @@ pub use http_types::{Method, Url};
 pub use serde_json::{json, Value};
 
 pub async fn test_setup() -> TestServer<Server<State>> {
+    std::env::set_var("APP_ENV", "test");
+    dotenv::dotenv().ok();
+    pretty_env_logger::try_init().ok();
+
     let test_db = TestDb::new().await;
     let db_pool = test_db.db();
 

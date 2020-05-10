@@ -5,11 +5,13 @@ use argonautica::Verifier;
 use async_std::task;
 use chrono::prelude::*;
 use failure::Fail;
+use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::rngs::OsRng;
 use rand::rngs::ThreadRng;
 use rand::RngCore;
 use rand::{thread_rng, Rng};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
@@ -25,6 +27,8 @@ use uuid::Uuid;
 #[cfg(test)]
 mod tests;
 
+mod env;
+
 #[async_std::main]
 async fn main() {
     dotenv::dotenv().ok();
@@ -39,6 +43,10 @@ async fn main() {
 pub async fn make_db_pool() -> PgPool {
     let db_url = std::env::var("DATABASE_URL").unwrap();
     Pool::new(&db_url).await.unwrap()
+}
+
+lazy_static! {
+    static ref BEARER_TOKEN_REGEX: Regex = Regex::new("^Bearer (.*)$").unwrap();
 }
 
 async fn server(db_pool: PgPool) -> Server<State> {
@@ -62,6 +70,11 @@ async fn server(db_pool: PgPool) -> Server<State> {
             let clear_text_password = create_user.password.clone();
             let hashed_password = task::spawn_blocking(|| {
                 let mut hasher = Hasher::default();
+
+                if env::current().is_test() {
+                    hasher.configure_iterations(1);
+                }
+
                 hasher
                     .with_password(clear_text_password)
                     .with_secret_key(secret_key)
@@ -115,17 +128,21 @@ async fn server(db_pool: PgPool) -> Server<State> {
         });
 
     server.at("/me").get(|req: Request<State>| async move {
-        let header_value = req
-            .header(&"Authentication".parse()?)
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .as_str();
-        let auth_token = header_value
-            .split("Bearer ")
-            .skip(1)
-            .collect::<Vec<_>>()
-            .join(" ");
+        let auth_header_key = "Authentication".parse()?;
+        let header_value = (|| {
+            let value = req.header(&auth_header_key)?.get(0)?;
+            Some(value.as_str())
+        })();
+        let header_value = match header_value {
+            Some(value) => value,
+            None => return Ok(Response::new(StatusCode::BadRequest)),
+        };
+
+        let caps = match BEARER_TOKEN_REGEX.captures(header_value) {
+            Some(caps) => caps,
+            None => return Ok(Response::new(StatusCode::BadRequest)),
+        };
+        let auth_token = &caps[1];
 
         let db_pool = &req.state().db_pool;
         let user = query_as!(
@@ -170,9 +187,7 @@ async fn server(db_pool: PgPool) -> Server<State> {
             .await?;
             let user = match user {
                 Some(user) => user,
-                None => {
-                    return Ok(Response::new(StatusCode::NotFound))
-                }
+                None => return Ok(Response::new(StatusCode::NotFound)),
             };
             let user_password = user.hashed_password;
 
