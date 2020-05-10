@@ -1,8 +1,8 @@
+use sqlx::prelude::Connect;
 use sqlx::PgConnection;
 use sqlx::PgPool;
 use sqlx::Postgres;
 use std::env;
-use sqlx::prelude::Connect;
 
 #[derive(Debug)]
 pub struct TestDb {
@@ -14,6 +14,7 @@ pub struct TestDb {
 impl TestDb {
     pub async fn new() -> Self {
         dotenv::dotenv().ok();
+        pretty_env_logger::try_init().ok();
 
         let db_url = db_url();
         create_db(&db_url).await;
@@ -61,7 +62,7 @@ fn parse_db_url(db_url: &str) -> (&str, &str) {
 }
 
 async fn create_db(db_url: &str) {
-    let (pg_conn, db_name) = dbg!(parse_db_url(db_url));
+    let (pg_conn, db_name) = parse_db_url(db_url);
 
     let mut conn = PgConnection::connect(pg_conn).await.unwrap();
 
@@ -104,20 +105,15 @@ async fn run_migrations(db_url: &str) {
         .await
         .unwrap();
 
-    let rows = sqlx::query!(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-    )
-    .fetch_all(&mut conn)
-    .await
-    .unwrap();
-    dbg!(rows);
-
     // Run the migrations
     let sql = async_std::fs::read_to_string("bin/setup.sql")
         .await
         .unwrap();
-    sqlx::query::<Postgres>(&sql)
-        .execute(&mut conn)
-        .await
-        .unwrap();
+
+    for query in sql.split(';') {
+        sqlx::query::<Postgres>(&query)
+            .execute(&mut conn)
+            .await
+            .unwrap();
+    }
 }

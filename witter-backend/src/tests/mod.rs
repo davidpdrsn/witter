@@ -1,12 +1,11 @@
 #[allow(unused_imports)]
 mod test_helpers;
 
-// TODO: map invalid data error to some 4xx response
-
+use serde::Deserialize;
 use test_helpers::*;
 
 #[async_std::test]
-async fn creating_a_user() {
+async fn creating_a_user_and_logging_in() {
     let mut server = test_setup().await;
 
     let res = get("/users").send(&mut server);
@@ -14,11 +13,79 @@ async fn creating_a_user() {
     let json = res.body_json::<Value>().await.unwrap();
     assert_json_eq!(json, json!([]));
 
-    let res = post("/users", json!({ "username": "bob" })).send(&mut server);
+    let res = post(
+        "/users",
+        json!({
+            "username": "bob",
+            "password": "foobar"
+        }),
+    )
+    .send(&mut server);
     assert_eq!(res.status(), 201);
 
-    let res = get("/users").send(&mut server);
+    let resp = res.body_json::<Data<Token>>().await.unwrap();
+    let token = resp.data.token;
+
+    let res = get("/me")
+        .header("Authentication", format!("Bearer {}", token))
+        .send(&mut server);
     assert_eq!(res.status(), 200);
+
     let json = res.body_json::<Value>().await.unwrap();
-    assert_json_include!(actual: json, expected: json!([{ "username": "bob" }]));
+    assert_json_include!(
+        actual: json,
+        expected: json!({
+            "data": {
+                "username": "bob"
+            }
+        })
+    );
+
+    let res = post("/users/bob/session", json!({ "password": "foobar" })).send(&mut server);
+    assert_eq!(res.status(), 201);
+    let json = res.body_json::<Value>().await.unwrap();
+    assert_json_include!(
+        actual: json,
+        expected: json!({
+            "data": {
+                "token": token
+            }
+        })
+    );
+}
+
+#[async_std::test]
+async fn logging_in_with_unknown_user_gives_404() {
+    let mut server = test_setup().await;
+
+    let res = post("/users/bob/session", json!({ "password": "foobar" })).send(&mut server);
+    assert_eq!(res.status(), 404);
+}
+
+#[async_std::test]
+async fn logging_in_with_invalid_token() {
+    let mut server = test_setup().await;
+
+    let res = post(
+        "/users",
+        json!({
+            "username": "bob",
+            "password": "foobar"
+        }),
+    )
+    .send(&mut server);
+    assert_eq!(res.status(), 201);
+
+    let res = post("/users/bob/session", json!({ "password": "baz" })).send(&mut server);
+    assert_eq!(res.status(), 403);
+}
+
+#[derive(Debug, Deserialize)]
+struct Data<T> {
+    data: T,
+}
+
+#[derive(Debug, Deserialize)]
+struct Token {
+    token: String,
 }
