@@ -8,11 +8,6 @@ use test_helpers::*;
 async fn creating_a_user_and_logging_in() {
     let mut server = test_setup().await;
 
-    let res = get("/users").send(&mut server);
-    assert_eq!(res.status(), 200);
-    let json = res.body_json::<Value>().await.unwrap();
-    assert_json_eq!(json, json!([]));
-
     let res = post(
         "/users",
         json!({
@@ -52,6 +47,66 @@ async fn creating_a_user_and_logging_in() {
             }
         })
     );
+}
+
+#[async_std::test]
+async fn logging_in_without_auth_header() {
+    let mut server = test_setup().await;
+
+    let res = post(
+        "/users",
+        json!({
+            "username": "bob",
+            "password": "foobar"
+        }),
+    )
+    .send(&mut server);
+    assert_eq!(res.status(), 201);
+
+    let res = get("/me").send(&mut server);
+    assert_eq!(res.status(), 400);
+
+    let content_type = res
+        .header(&"Content-Type".parse().unwrap())
+        .unwrap()
+        .get(0)
+        .unwrap()
+        .as_str();
+    assert_eq!(content_type, "application/json");
+
+    let json = res.body_json::<Value>().await.unwrap();
+
+    assert_json_include!(
+        actual: json,
+        expected: json!({
+            "error": {
+                "message": "Missing value for `Authentication` header"
+            }
+        })
+    );
+}
+
+#[async_std::test]
+async fn logging_in_with_invalid_auth_header() {
+    let mut server = test_setup().await;
+
+    let res = post(
+        "/users",
+        json!({
+            "username": "bob",
+            "password": "foobar"
+        }),
+    )
+    .send(&mut server);
+    assert_eq!(res.status(), 201);
+
+    let resp = res.body_json::<Data<Token>>().await.unwrap();
+    let token = resp.data.token;
+
+    let res = get("/me")
+        .header("Authentication", format!("foo {}", token))
+        .send(&mut server);
+    assert_eq!(res.status(), 400);
 }
 
 #[async_std::test]
