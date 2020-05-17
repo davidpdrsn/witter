@@ -1,3 +1,1 @@
 Map invalid data error to some 4xx response
-
-Figure why it seems we're getting version 0.1 of futures and not 0.3 as specified in our Cargo.toml
