@@ -5,6 +5,7 @@ use argonautica::Verifier;
 use async_std::task;
 use chrono::prelude::*;
 use failure::Fail;
+use futures::compat::Compat01As03;
 use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::rngs::OsRng;
@@ -68,20 +69,20 @@ async fn server(db_pool: PgPool) -> Server<State> {
 
             let secret_key = std::env::var("SECRET_KEY")?;
             let clear_text_password = create_user.password.clone();
-            let hashed_password = task::spawn_blocking(|| {
-                let mut hasher = Hasher::default();
+            let mut hasher = Hasher::default();
 
-                if env::current().is_test() {
-                    hasher.configure_iterations(1);
-                }
+            if env::current().is_test() {
+                hasher.configure_iterations(1);
+            }
 
+            let hashed_password = Compat01As03::new(
                 hasher
                     .with_password(clear_text_password)
                     .with_secret_key(secret_key)
-                    .hash()
-                    .map_err(|err| err.compat())
-            })
-            .await?;
+                    .hash_non_blocking(),
+            )
+            .await
+            .map_err(|err| err.compat())?;
 
             let now = Utc::now();
             let row = query!(
@@ -192,16 +193,16 @@ async fn server(db_pool: PgPool) -> Server<State> {
             let user_password = user.hashed_password;
 
             let secret_key = std::env::var("SECRET_KEY")?;
-            let is_valid = task::spawn_blocking(|| {
-                let mut verifier = Verifier::default();
+            let mut verifier = Verifier::default();
+            let is_valid = Compat01As03::new(
                 verifier
                     .with_hash(user_password)
                     .with_password(password)
                     .with_secret_key(secret_key)
-                    .verify()
-                    .map_err(|err| err.compat())
-            })
-            .await?;
+                    .verify_non_blocking(),
+            )
+            .await
+            .map_err(|err| err.compat())?;
 
             if is_valid {
                 let token_row = query!(
