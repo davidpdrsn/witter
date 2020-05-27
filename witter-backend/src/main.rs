@@ -1,7 +1,9 @@
 use dotenv;
 
+use http_types::headers::HeaderValue;
 use sqlx::PgPool;
 use sqlx::Pool;
+use tide::security::Origin;
 use tide::Server;
 
 #[cfg(test)]
@@ -31,6 +33,15 @@ pub async fn make_db_pool() -> PgPool {
 async fn server(db_pool: PgPool) -> Server<State> {
     let mut server: Server<State> = Server::with_state(State { db_pool });
 
+    server.middleware(
+        middlewares::CorsMiddleware::new()
+            .allow_methods(
+                "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+                    .parse::<HeaderValue>()
+                    .unwrap(),
+            )
+            .allow_origin(Origin::Any),
+    );
     server.middleware(middlewares::ErrorReponseToJson);
 
     server.at("/users").post(endpoints::users::create);

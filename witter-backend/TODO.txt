@@ -1,1 +1,3 @@
 Map invalid data error to some 4xx response
+
+Errors if trying to create user with username that is already taken.

@@ -15,14 +15,14 @@ lazy_static! {
 }
 
 pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
-    let header_value = get_header("Authentication", req)?;
+    let header_value = get_header("Authorization", req)?;
 
     let caps = match BEARER_TOKEN_REGEX.captures(header_value) {
         Some(caps) => caps,
         None => {
             return Err(Error::from_str(
                 StatusCode::BadRequest,
-                "Unable to parse Authentication header value",
+                "Unable to parse Authorization header value",
             ))
         }
     };

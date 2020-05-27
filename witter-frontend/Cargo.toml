@@ -1,0 +1,32 @@
+[package]
+version = "0.1.0"
+name = "app_name"
+repository = "https://github.com/seed-rs/seed-quickstart"
+authors = ["Your Name <email@address.com>"]
+description = "App Description"
+categories = ["category"]
+license = "MIT"
+readme = "./README.md"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.12"
+
+[dependencies]
+# Referenced commit fixes base url and memory bugs in Seed 0.7.0
+# (https://github.com/seed-rs/seed/pull/454 + https://github.com/seed-rs/seed/pull/455).
+# Replace with "0.8.0" once the new Seed version is released.
+seed = { git = "https://github.com/seed-rs/seed", rev = "b25cf59" }
+serde = { version = "1.0.110", features = ["derive"] }
+serde_json = "1.0.53"
+
+[profile.release]
+lto = true
+opt-level = 'z'
+codegen-units = 1
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-Os']

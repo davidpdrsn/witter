@@ -22,7 +22,7 @@ async fn creating_a_user_and_logging_in() {
     let token = resp.data.token;
 
     let res = get("/me")
-        .header("Authentication", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {}", token))
         .send(&mut server);
     assert_eq!(res.status(), 200);
 
@@ -80,7 +80,7 @@ async fn logging_in_without_auth_header() {
         actual: json,
         expected: json!({
             "error": {
-                "message": "Missing value for `Authentication` header"
+                "message": "Missing value for `Authorization` header"
             }
         })
     );
@@ -104,7 +104,7 @@ async fn logging_in_with_invalid_auth_header() {
     let token = resp.data.token;
 
     let res = get("/me")
-        .header("Authentication", format!("foo {}", token))
+        .header("Authorization", format!("foo {}", token))
         .send(&mut server);
     assert_eq!(res.status(), 400);
 }
