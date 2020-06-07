@@ -4,19 +4,9 @@ use crate::tests::test_helpers::*;
 async fn creating_a_user_and_logging_in() {
     let mut server = test_setup().await;
 
-    let res = post(
-        "/users",
-        CreateUserPayload {
-            username: "bob".to_string(),
-            password: "foobar".to_string(),
-        },
-    )
-    .send(&mut server)
-    .await;
-    assert_eq!(res.status(), 201);
-
-    let resp = res.body_json::<ApiResponse<TokenResponse>>().await.unwrap();
-    let token = resp.data.token;
+    let token = create_user_and_authenticate(&mut server, Some("bob".to_string()))
+        .await
+        .token;
 
     let res = get("/me")
         .header("Authorization", format!("Bearer {}", token))
@@ -60,16 +50,7 @@ async fn claiming_username_already_claimed_gives_client_error() {
 
     let username = "bob".to_string();
 
-    let res = post(
-        "/users",
-        CreateUserPayload {
-            username: username.clone(),
-            password: "foo".to_string(),
-        },
-    )
-    .send(&mut server)
-    .await;
-    assert_eq!(res.status(), 201);
+    create_user_and_authenticate(&mut server, Some(username.clone())).await;
 
     let res = post(
         "/users",

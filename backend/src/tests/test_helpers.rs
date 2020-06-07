@@ -17,14 +17,14 @@ use std::env;
 use std::pin::Pin;
 use test_db::TestDb;
 
-pub use tide::http::Response;
 pub use assert_json_diff::{assert_json_eq, assert_json_include};
-pub use tide::http::Request;
-pub use tide::http::{Method, Url};
 pub use serde_json::{json, Value};
-pub use tide::http::headers::HeaderName;
 pub use shared::payloads::*;
 pub use shared::responses::*;
+pub use tide::http::headers::HeaderName;
+pub use tide::http::Request;
+pub use tide::http::Response;
+pub use tide::http::{Method, Url};
 
 pub async fn test_setup() -> TestServer {
     std::env::set_var("APP_ENV", "test");
@@ -45,16 +45,10 @@ pub struct TestServer {
 
 impl TestServer {
     fn new(service: Server<State>, test_db: TestDb) -> Self {
-        Self {
-            service,
-            test_db,
-        }
+        Self { service, test_db }
     }
 
-    pub async fn simulate(
-        &mut self,
-        req: Request,
-    ) -> tide::Result<Response> {
+    pub async fn simulate(&mut self, req: Request) -> tide::Result<Response> {
         self.service.respond(req).await
     }
 }
@@ -131,4 +125,26 @@ impl TestRequest {
         self.headers.insert(key.to_string(), value.to_string());
         self
     }
+}
+
+pub async fn create_user_and_authenticate(
+    server: &mut TestServer,
+    username: Option<String>,
+) -> TokenResponse {
+    let resp = post(
+        "/users",
+        CreateUserPayload {
+            username: username.unwrap_or_else(|| "bob".to_string()),
+            password: "foobar".to_string(),
+        },
+    )
+    .send(server)
+    .await;
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp
+        .body_json::<ApiResponse<TokenResponse>>()
+        .await
+        .unwrap();
+    resp.data
 }

@@ -52,6 +52,8 @@ async fn server(db_pool: PgPool) -> Server<State> {
 
     server.at("/me").get(endpoints::me::get);
 
+    server.at("/tweets").post(endpoints::tweets::create);
+
     server
 }
 

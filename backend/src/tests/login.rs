@@ -4,16 +4,7 @@ use crate::tests::test_helpers::*;
 async fn logging_in_without_auth_header() {
     let mut server = test_setup().await;
 
-    let res = post(
-        "/users",
-        CreateUserPayload {
-            username: "bob".to_string(),
-            password: "foobar".to_string(),
-        },
-    )
-    .send(&mut server)
-    .await;
-    assert_eq!(res.status(), 201);
+    create_user_and_authenticate(&mut server, None).await;
 
     let res = get("/me").send(&mut server).await;
     assert_eq!(res.status(), 400);
@@ -42,19 +33,7 @@ async fn logging_in_without_auth_header() {
 async fn logging_in_with_invalid_auth_header() {
     let mut server = test_setup().await;
 
-    let res = post(
-        "/users",
-        CreateUserPayload {
-            username: "bob".to_string(),
-            password: "foobar".to_string(),
-        },
-    )
-    .send(&mut server)
-    .await;
-    assert_eq!(res.status(), 201);
-
-    let resp = res.body_json::<ApiResponse<TokenResponse>>().await.unwrap();
-    let token = resp.data.token;
+    let token = create_user_and_authenticate(&mut server, None).await.token;
 
     let res = get("/me")
         .header("Authorization", format!("foo {}", token))
@@ -77,16 +56,7 @@ async fn logging_in_with_unknown_user_gives_404() {
 async fn logging_in_with_invalid_token() {
     let mut server = test_setup().await;
 
-    let res = post(
-        "/users",
-        CreateUserPayload {
-            username: "bob".to_string(),
-            password: "foobar".to_string(),
-        },
-    )
-    .send(&mut server)
-    .await;
-    assert_eq!(res.status(), 201);
+    create_user_and_authenticate(&mut server, None).await;
 
     let res = post(
         "/users/bob/session",

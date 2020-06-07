@@ -10,3 +10,8 @@ pub struct CreateUserPayload {
 pub struct LoginPayload {
     pub password: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateTweetPayload {
+    pub text: String,
+}

@@ -10,6 +10,7 @@ use tide::http::headers::HeaderName;
 
 pub mod me;
 pub mod users;
+pub mod tweets;
 
 lazy_static! {
     static ref BEARER_TOKEN_REGEX: Regex = Regex::new("^Bearer (.*)$").unwrap();

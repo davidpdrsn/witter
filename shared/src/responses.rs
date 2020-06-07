@@ -30,3 +30,9 @@ pub struct UserResponse {
     pub id: Uuid,
     pub username: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TweetResponse {
+    pub id: Uuid,
+    pub text: String,
+}

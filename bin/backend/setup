@@ -3,4 +3,4 @@ set -e
 
 dropdb witter || true
 createdb witter || true
-psql -d witter < bin/setup.sql
+psql -d witter < bin/backend/setup.sql
