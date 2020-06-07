@@ -23,6 +23,8 @@ pub use tide::http::Request;
 pub use tide::http::{Method, Url};
 pub use serde_json::{json, Value};
 pub use tide::http::headers::HeaderName;
+pub use shared::payloads::*;
+pub use shared::responses::*;
 
 pub async fn test_setup() -> TestServer {
     std::env::set_var("APP_ENV", "test");

@@ -7,6 +7,6 @@
 # New features
 
 - Post tweets
-- Timeline
 - Follow/unfollow
+- Timeline
 - Mentions
