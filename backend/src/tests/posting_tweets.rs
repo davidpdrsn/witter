@@ -30,7 +30,7 @@ async fn posting_a_valid_tweet() {
 
 #[async_std::test]
 async fn posting_a_tweet_that_is_too_long() {
-    use crate::endpoints::tweets::MAX_TWEET_LENGTH;
+    use shared::MAX_TWEET_LENGTH;
 
     let mut server = test_setup().await;
 

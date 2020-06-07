@@ -6,8 +6,7 @@ use shared::{payloads::CreateTweetPayload, responses::TweetResponse};
 use sqlx::query;
 use tide::{Error, Request, StatusCode};
 use uuid::Uuid;
-
-pub const MAX_TWEET_LENGTH: usize = 140;
+use shared::MAX_TWEET_LENGTH;
 
 pub async fn create(mut req: Request<State>) -> tide::Result {
     let db_pool = req.state().db_pool.clone();
