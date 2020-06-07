@@ -6,6 +6,7 @@ use tide::Request;
 use tide::http::Error;
 use tide::http::StatusCode;
 use sqlx::query_as;
+use tide::http::headers::HeaderName;
 
 pub mod me;
 pub mod users;
@@ -47,7 +48,7 @@ pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
 }
 
 fn get_header<'a>(header_key: &str, req: &'a Request<State>) -> Result<&'a str, Error> {
-    let auth_header_key = header_key.parse()?;
+    let auth_header_key: HeaderName = header_key.parse()?;
 
     let header_value = (|| {
         let value = req.header(&auth_header_key)?.get(0)?;

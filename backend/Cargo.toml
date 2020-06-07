@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = { version = "1.5.0", features = ["attributes", "unstable"] }
-tide = "0.8.0"
+async-std = { version = "1.6.0", features = ["attributes", "unstable"] }
+tide = "0.9"
 sqlx = { version = "0.3.4", features = ["runtime-async-std", "macros", "chrono", "json", "postgres", "uuid"] }
 dotenv = "0.15.0"
 pretty_env_logger = "0.4.0"
@@ -18,9 +18,7 @@ serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.52"
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
 thiserror = "1.0.18"
-http-service = "0.5.0"
 futures = { version = "0.3.4", features = ["compat"] }
-http-types = "1.2.0"
 anyhow = "1.0.28"
 rand = "0.7.3"
 argonautica = "0.2.0"
@@ -30,5 +28,4 @@ lazy_static = "1.4.0"
 shared = { path = "../shared", version = "0.1.0" }
 
 [dev-dependencies]
-http-service-mock = "0.5.0"
 assert-json-diff = "1.0.3"

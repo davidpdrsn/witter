@@ -15,7 +15,8 @@ async fn creating_a_user_and_logging_in() {
             "password": "foobar"
         }),
     )
-    .send(&mut server);
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 201);
 
     let resp = res.body_json::<Data<Token>>().await.unwrap();
@@ -23,7 +24,8 @@ async fn creating_a_user_and_logging_in() {
 
     let res = get("/me")
         .header("Authorization", format!("Bearer {}", token))
-        .send(&mut server);
+        .send(&mut server)
+        .await;
     assert_eq!(res.status(), 200);
 
     let json = res.body_json::<Value>().await.unwrap();
@@ -36,7 +38,9 @@ async fn creating_a_user_and_logging_in() {
         })
     );
 
-    let res = post("/users/bob/session", json!({ "password": "foobar" })).send(&mut server);
+    let res = post("/users/bob/session", json!({ "password": "foobar" }))
+        .send(&mut server)
+        .await;
     assert_eq!(res.status(), 201);
     let json = res.body_json::<Value>().await.unwrap();
     assert_json_include!(
@@ -60,14 +64,15 @@ async fn logging_in_without_auth_header() {
             "password": "foobar"
         }),
     )
-    .send(&mut server);
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 201);
 
-    let res = get("/me").send(&mut server);
+    let res = get("/me").send(&mut server).await;
     assert_eq!(res.status(), 400);
 
     let content_type = res
-        .header(&"Content-Type".parse().unwrap())
+        .header("Content-Type".parse::<HeaderName>().unwrap())
         .unwrap()
         .get(0)
         .unwrap()
@@ -97,7 +102,8 @@ async fn logging_in_with_invalid_auth_header() {
             "password": "foobar"
         }),
     )
-    .send(&mut server);
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 201);
 
     let resp = res.body_json::<Data<Token>>().await.unwrap();
@@ -105,7 +111,8 @@ async fn logging_in_with_invalid_auth_header() {
 
     let res = get("/me")
         .header("Authorization", format!("foo {}", token))
-        .send(&mut server);
+        .send(&mut server)
+        .await;
     assert_eq!(res.status(), 400);
 }
 
@@ -113,7 +120,9 @@ async fn logging_in_with_invalid_auth_header() {
 async fn logging_in_with_unknown_user_gives_404() {
     let mut server = test_setup().await;
 
-    let res = post("/users/bob/session", json!({ "password": "foobar" })).send(&mut server);
+    let res = post("/users/bob/session", json!({ "password": "foobar" }))
+        .send(&mut server)
+        .await;
     assert_eq!(res.status(), 404);
 }
 
@@ -128,10 +137,13 @@ async fn logging_in_with_invalid_token() {
             "password": "foobar"
         }),
     )
-    .send(&mut server);
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 201);
 
-    let res = post("/users/bob/session", json!({ "password": "baz" })).send(&mut server);
+    let res = post("/users/bob/session", json!({ "password": "baz" }))
+        .send(&mut server)
+        .await;
     assert_eq!(res.status(), 403);
 }
 

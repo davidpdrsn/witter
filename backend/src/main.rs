@@ -1,6 +1,6 @@
 use dotenv;
 
-use http_types::headers::HeaderValue;
+use tide::http::headers::HeaderValue;
 use sqlx::PgPool;
 use sqlx::Pool;
 use tide::security::Origin;
@@ -42,6 +42,7 @@ async fn server(db_pool: PgPool) -> Server<State> {
             )
             .allow_origin(Origin::Any),
     );
+
     server.middleware(middlewares::ErrorReponseToJson);
 
     server.at("/users").post(endpoints::users::create);

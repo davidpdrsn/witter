@@ -6,7 +6,6 @@ use crate::Server;
 use crate::State;
 use crate::{make_db_pool, server};
 use futures::{executor::block_on, prelude::*};
-use http_service::{HttpService, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sqlx::prelude::Connect;
@@ -18,12 +17,14 @@ use std::env;
 use std::pin::Pin;
 use test_db::TestDb;
 
+pub use tide::http::Response;
 pub use assert_json_diff::{assert_json_eq, assert_json_include};
-pub use http_types::Request;
-pub use http_types::{Method, Url};
+pub use tide::http::Request;
+pub use tide::http::{Method, Url};
 pub use serde_json::{json, Value};
+pub use tide::http::headers::HeaderName;
 
-pub async fn test_setup() -> TestServer<Server<State>> {
+pub async fn test_setup() -> TestServer {
     std::env::set_var("APP_ENV", "test");
     dotenv::dotenv().ok();
     pretty_env_logger::try_init().ok();
@@ -32,35 +33,27 @@ pub async fn test_setup() -> TestServer<Server<State>> {
     let db_pool = test_db.db();
 
     let server = server(db_pool).await;
-    TestServer::new(server, test_db).unwrap()
+    TestServer::new(server, test_db)
 }
 
-#[derive(Debug)]
-pub struct TestServer<T: HttpService> {
-    service: T,
-    connection: T::Connection,
+pub struct TestServer {
+    service: Server<State>,
     test_db: TestDb,
 }
 
-impl<T: HttpService> TestServer<T> {
-    fn new(service: T, test_db: TestDb) -> Result<Self, <T::ConnectionFuture as TryFuture>::Error> {
-        let connection = block_on(service.connect().into_future())?;
-        Ok(Self {
+impl TestServer {
+    fn new(service: Server<State>, test_db: TestDb) -> Self {
+        Self {
             service,
-            connection,
             test_db,
-        })
+        }
     }
 
-    pub fn simulate(
+    pub async fn simulate(
         &mut self,
         req: Request,
-    ) -> Result<Response, <T::ResponseFuture as TryFuture>::Error> {
-        block_on(
-            self.service
-                .respond(self.connection.clone(), req)
-                .into_future(),
-        )
+    ) -> tide::Result<Response> {
+        self.service.respond(req).await
     }
 }
 
@@ -72,7 +65,7 @@ pub trait BodyJson {
 
 impl BodyJson for Response {
     fn body_json<T: DeserializeOwned>(
-        self,
+        mut self,
     ) -> Pin<Box<dyn Future<Output = Result<T, Box<dyn std::error::Error>>>>> {
         Box::pin(async move {
             let body = self.body_string().await?;
@@ -112,7 +105,7 @@ pub enum TestRequestKind {
 }
 
 impl TestRequest {
-    pub fn send(self, server: &mut TestServer<Server<State>>) -> Response {
+    pub async fn send(self, server: &mut TestServer) -> Response {
         let url = Url::parse(&format!("http://example.com{}", self.url)).unwrap();
 
         let mut req = match self.kind {
@@ -126,10 +119,10 @@ impl TestRequest {
         };
 
         for (key, value) in self.headers {
-            req.insert_header(key.as_str(), value.as_str()).unwrap();
+            req.insert_header(key.as_str(), value.as_str());
         }
 
-        server.simulate(req).unwrap()
+        server.simulate(req).await.unwrap()
     }
 
     pub fn header(mut self, key: &str, value: impl ToString) -> Self {
