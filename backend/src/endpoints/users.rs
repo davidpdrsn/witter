@@ -1,8 +1,5 @@
 use crate::env;
 use crate::responses::BuildApiResponse;
-use shared::responses::TokenResponse;
-use shared::payloads::CreateUserPayload;
-use shared::payloads::LoginPayload;
 use crate::State;
 use argonautica::{Hasher, Verifier};
 use chrono::prelude::*;
@@ -11,15 +8,25 @@ use futures::compat::Compat01As03;
 use rand::distributions::Alphanumeric;
 use rand::rngs::OsRng;
 use rand::Rng;
-use sqlx::query;
+use shared::payloads::CreateUserPayload;
+use shared::payloads::LoginPayload;
+use shared::responses::TokenResponse;
+use sqlx::{query, PgPool};
 use tide::Request;
-use tide::StatusCode;
 use tide::Response;
+use tide::{Error, StatusCode};
 use uuid::Uuid;
 
 pub async fn create(mut req: Request<State>) -> tide::Result {
     let db_pool = req.state().db_pool.clone();
     let create_user = req.body_json::<CreateUserPayload>().await?;
+
+    if username_already_claimed(&create_user.username, &db_pool).await? {
+        return Err(Error::from_str(
+            StatusCode::UnprocessableEntity,
+            "Username is already claimed",
+        ));
+    }
 
     let secret_key = std::env::var("SECRET_KEY")?;
     let clear_text_password = create_user.password.clone();
@@ -76,6 +83,14 @@ pub async fn create(mut req: Request<State>) -> tide::Result {
     .await?;
 
     TokenResponse::new(&token.token).to_response_with_status(StatusCode::Created)
+}
+
+async fn username_already_claimed(username: &str, db_pool: &PgPool) -> tide::Result<bool> {
+    let row = query!("select 1 as one from users where username = $1", username)
+        .fetch_optional(db_pool)
+        .await?;
+
+    Ok(row.is_some())
 }
 
 pub async fn login(mut req: Request<State>) -> tide::Result {

@@ -1,8 +1,9 @@
 #[allow(unused_imports)]
 pub mod test_helpers;
 
+use shared::payloads::{CreateUserPayload, LoginPayload};
+use shared::responses::{ApiResponse, TokenResponse};
 use test_helpers::*;
-use shared::responses::{TokenResponse, ApiResponse};
 
 #[async_std::test]
 async fn creating_a_user_and_logging_in() {
@@ -10,10 +11,10 @@ async fn creating_a_user_and_logging_in() {
 
     let res = post(
         "/users",
-        json!({
-            "username": "bob",
-            "password": "foobar"
-        }),
+        CreateUserPayload {
+            username: "bob".to_string(),
+            password: "foobar".to_string(),
+        },
     )
     .send(&mut server)
     .await;
@@ -38,9 +39,14 @@ async fn creating_a_user_and_logging_in() {
         })
     );
 
-    let res = post("/users/bob/session", json!({ "password": "foobar" }))
-        .send(&mut server)
-        .await;
+    let res = post(
+        "/users/bob/session",
+        LoginPayload {
+            password: "foobar".to_string(),
+        },
+    )
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 201);
     let json = res.body_json::<Value>().await.unwrap();
     assert_json_include!(
@@ -59,10 +65,10 @@ async fn logging_in_without_auth_header() {
 
     let res = post(
         "/users",
-        json!({
-            "username": "bob",
-            "password": "foobar"
-        }),
+        CreateUserPayload {
+            username: "bob".to_string(),
+            password: "foobar".to_string(),
+        },
     )
     .send(&mut server)
     .await;
@@ -97,10 +103,10 @@ async fn logging_in_with_invalid_auth_header() {
 
     let res = post(
         "/users",
-        json!({
-            "username": "bob",
-            "password": "foobar"
-        }),
+        CreateUserPayload {
+            username: "bob".to_string(),
+            password: "foobar".to_string(),
+        },
     )
     .send(&mut server)
     .await;
@@ -132,17 +138,62 @@ async fn logging_in_with_invalid_token() {
 
     let res = post(
         "/users",
-        json!({
-            "username": "bob",
-            "password": "foobar"
-        }),
+        CreateUserPayload {
+            username: "bob".to_string(),
+            password: "foobar".to_string(),
+        },
     )
     .send(&mut server)
     .await;
     assert_eq!(res.status(), 201);
 
-    let res = post("/users/bob/session", json!({ "password": "baz" }))
-        .send(&mut server)
-        .await;
+    let res = post(
+        "/users/bob/session",
+        LoginPayload {
+            password: "baz".to_string(),
+        },
+    )
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 403);
+}
+
+#[async_std::test]
+async fn claiming_username_already_claimed_gives_client_error() {
+    let mut server = test_setup().await;
+
+    let username = "bob".to_string();
+
+    let res = post(
+        "/users",
+        CreateUserPayload {
+            username: username.clone(),
+            password: "foo".to_string(),
+        },
+    )
+    .send(&mut server)
+    .await;
+    assert_eq!(res.status(), 201);
+
+    let res = post(
+        "/users",
+        CreateUserPayload {
+            username,
+            password: "bar".to_string(),
+        },
+    )
+    .send(&mut server)
+    .await;
+    assert_eq!(res.status(), 422);
+
+    let json = res.body_json::<Value>().await.unwrap();
+
+    assert_json_include!(
+        actual: json,
+        expected: json!({
+            "error": {
+                "message": "Username is already claimed"
+            }
+        })
+    );
 }

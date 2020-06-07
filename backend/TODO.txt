@@ -1,11 +1,8 @@
 # Bugs
 
-- Errors if trying to create user with username that is already taken.
 - Map invalid data error to some 4xx response
 
 # Improvements
-
-- Share response types between frontend and backend via shared library
 
 # New features
 
