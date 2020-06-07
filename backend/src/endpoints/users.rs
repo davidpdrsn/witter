@@ -1,7 +1,8 @@
-use serde::Deserialize;
 use crate::env;
 use crate::responses::BuildApiResponse;
-use crate::responses::TokenResponse;
+use shared::responses::TokenResponse;
+use shared::payloads::CreateUserPayload;
+use shared::payloads::LoginPayload;
 use crate::State;
 use argonautica::{Hasher, Verifier};
 use chrono::prelude::*;
@@ -18,7 +19,7 @@ use uuid::Uuid;
 
 pub async fn create(mut req: Request<State>) -> tide::Result {
     let db_pool = req.state().db_pool.clone();
-    let create_user = req.body_json::<CreateUser>().await?;
+    let create_user = req.body_json::<CreateUserPayload>().await?;
 
     let secret_key = std::env::var("SECRET_KEY")?;
     let clear_text_password = create_user.password.clone();
@@ -77,15 +78,9 @@ pub async fn create(mut req: Request<State>) -> tide::Result {
     TokenResponse::new(&token.token).to_response_with_status(StatusCode::Created)
 }
 
-#[derive(Debug, Deserialize)]
-struct CreateUser {
-    username: String,
-    password: String,
-}
-
 pub async fn login(mut req: Request<State>) -> tide::Result {
     let username = req.param::<String>("username")?;
-    let password = req.body_json::<Password>().await?.password;
+    let password = req.body_json::<LoginPayload>().await?.password;
 
     let db_pool = req.state().db_pool.clone();
 
@@ -133,9 +128,4 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     } else {
         Ok(Response::new(StatusCode::Forbidden))
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct Password {
-    password: String,
 }

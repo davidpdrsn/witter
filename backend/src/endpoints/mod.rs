@@ -1,5 +1,5 @@
 use crate::State;
-use crate::responses::User;
+use shared::responses::UserResponse;
 use lazy_static::lazy_static;
 use regex::Regex;
 use tide::Request;
@@ -15,7 +15,7 @@ lazy_static! {
     static ref BEARER_TOKEN_REGEX: Regex = Regex::new("^Bearer (.*)$").unwrap();
 }
 
-pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
+pub async fn authenticate(req: &Request<State>) -> Result<UserResponse, Error> {
     let header_value = get_header("Authorization", req)?;
 
     let caps = match BEARER_TOKEN_REGEX.captures(header_value) {
@@ -31,7 +31,7 @@ pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
 
     let db_pool = &req.state().db_pool;
     let user = query_as!(
-        User,
+        UserResponse,
         r#"
             select users.id, users.username
             from users

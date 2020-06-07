@@ -1,8 +1,8 @@
 #[allow(unused_imports)]
 pub mod test_helpers;
 
-use serde::Deserialize;
 use test_helpers::*;
+use shared::responses::{TokenResponse, ApiResponse};
 
 #[async_std::test]
 async fn creating_a_user_and_logging_in() {
@@ -19,7 +19,7 @@ async fn creating_a_user_and_logging_in() {
     .await;
     assert_eq!(res.status(), 201);
 
-    let resp = res.body_json::<Data<Token>>().await.unwrap();
+    let resp = res.body_json::<ApiResponse<TokenResponse>>().await.unwrap();
     let token = resp.data.token;
 
     let res = get("/me")
@@ -106,7 +106,7 @@ async fn logging_in_with_invalid_auth_header() {
     .await;
     assert_eq!(res.status(), 201);
 
-    let resp = res.body_json::<Data<Token>>().await.unwrap();
+    let resp = res.body_json::<ApiResponse<TokenResponse>>().await.unwrap();
     let token = resp.data.token;
 
     let res = get("/me")
@@ -145,14 +145,4 @@ async fn logging_in_with_invalid_token() {
         .send(&mut server)
         .await;
     assert_eq!(res.status(), 403);
-}
-
-#[derive(Debug, Deserialize)]
-struct Data<T> {
-    data: T,
-}
-
-#[derive(Debug, Deserialize)]
-struct Token {
-    token: String,
 }
