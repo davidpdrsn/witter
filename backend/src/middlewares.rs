@@ -33,7 +33,9 @@ impl Middleware<State> for ErrorReponseToJson {
                         }
                     });
 
-                    Ok(Response::new(status).body_json(&body)?)
+                    let mut resp = Response::new(status);
+                    resp.set_body(body);
+                    Ok(resp)
                 }
             }
         })
@@ -195,9 +197,11 @@ impl<State: Send + Sync + 'static> Middleware<State> for CorsMiddleware {
 
             let mut response: tide::http::Response = match next.run(req).await {
                 Ok(resp) => resp.into(),
-                Err(err) => Response::new(err.status())
-                    .body_string(format!("{}", err))
-                    .into(),
+                Err(err) => {
+                    let mut resp = Response::new(err.status());
+                    resp.set_body(format!("{}", err));
+                    resp.into()
+                }
             };
 
             response

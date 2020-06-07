@@ -3,6 +3,7 @@ use tide::http::Error;
 use tide::http::StatusCode;
 use tide::Response;
 use uuid::Uuid;
+use tide::Body;
 
 #[derive(Debug, Serialize)]
 pub struct ApiResponse<T> {
@@ -18,7 +19,9 @@ impl<T> ApiResponse<T> {
     where
         T: Serialize,
     {
-        Ok(Response::new(status).body_json(&self)?)
+        let mut resp = Response::new(status);
+        resp.set_body(Body::from_json(&self)?);
+        Ok(resp)
     }
 
     #[allow(dead_code)]
@@ -26,7 +29,9 @@ impl<T> ApiResponse<T> {
     where
         T: Serialize,
     {
-        Ok(Response::new(StatusCode::Ok).body_json(&self)?)
+        let mut resp = Response::new(StatusCode::Ok);
+        resp.set_body(Body::from_json(&self)?);
+        Ok(resp)
     }
 }
 
