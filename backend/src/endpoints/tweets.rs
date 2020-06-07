@@ -2,11 +2,11 @@ use crate::endpoints::authenticate;
 use crate::responses::BuildApiResponse;
 use crate::State;
 use chrono::Utc;
+use shared::MAX_TWEET_LENGTH;
 use shared::{payloads::CreateTweetPayload, responses::TweetResponse};
 use sqlx::query;
 use tide::{Error, Request, StatusCode};
 use uuid::Uuid;
-use shared::MAX_TWEET_LENGTH;
 
 pub async fn create(mut req: Request<State>) -> tide::Result {
     let db_pool = req.state().db_pool.clone();
