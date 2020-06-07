@@ -4,6 +4,9 @@ PORT = "8000"
 [config]
 skip_core_tasks = true
 
+[tasks.ignore-members]
+workspace = false
+
 # ---- BASIC ----
 
 [tasks.watch]

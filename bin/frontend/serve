@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+main() {
+  cd frontend
+  microserver --port 3000
+}
+
+main

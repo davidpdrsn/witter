@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+psql -l | rg -o "witter_.*?\b" | while read db; do dropdb $db; done

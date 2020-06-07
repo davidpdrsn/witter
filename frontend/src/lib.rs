@@ -128,7 +128,7 @@ fn view(model: &Model) -> Node<Msg> {
     ]
 }
 
-fn after_mount(_: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
+fn after_mount(_: Url, _: &mut impl Orders<Msg>) -> AfterMount<Model> {
     AfterMount::default()
 }
 

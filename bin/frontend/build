@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+main() {
+  cd frontend
+
+  if [[ $@ = "--watch" ]]; then
+    cargo watch --clear --watch . --watch ../shared -s "wasm-pack build --target web --out-name package --dev"
+  else
+    wasm-pack build --target web --out-name package --dev
+  fi
+}
+
+main $@
