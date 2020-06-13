@@ -10,7 +10,6 @@ services:
 
 script:
   - psql -a -U postgres -f backend/bin/setup.sql
-  - cd backend
   - cargo test --verbose
 
 env:
