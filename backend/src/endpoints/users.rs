@@ -20,8 +20,8 @@ use tide::{Error, StatusCode};
 use uuid::Uuid;
 
 pub async fn create(mut req: Request<State>) -> tide::Result {
-    let db_pool = req.state().db_pool.clone();
-    let create_user = req.body_json::<CreateUserPayload>().await?;
+    let create_user = req.body_json::<CreateUser>().await?;
+    let db_pool = &req.state().db_pool;
 
     if username_already_claimed(&create_user.username, &db_pool).await? {
         return Err(Error::from_str(
@@ -59,7 +59,7 @@ pub async fn create(mut req: Request<State>) -> tide::Result {
         now,
         now,
     )
-    .fetch_one(&db_pool)
+    .fetch_one(db_pool)
     .await?;
     let user_id = row.id;
 
@@ -81,7 +81,7 @@ pub async fn create(mut req: Request<State>) -> tide::Result {
         now,
         now,
     )
-    .fetch_one(&db_pool)
+    .fetch_one(db_pool)
     .await?;
 
     TokenResponse::new(&token.token).to_response_with_status(StatusCode::Created)
