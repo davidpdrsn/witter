@@ -1,0 +1,21 @@
+language: rust
+
+rust:
+  - 1.44.0
+
+cache: cargo
+
+services:
+  - postgresql
+
+script:
+  - psql -a -U postgres -f backend/bin/setup.sql
+  - cd backend
+  - cargo test --verbose
+
+env:
+  global:
+    - APP_ENV=test
+    - DATABASE_URL=postgresql://postgres@localhost/postgres
+    - RUST_BACKTRACE=1
+    - SECRET_KEY=maEuLPz82CJuhgDFLZtTjTby
