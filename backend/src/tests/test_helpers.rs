@@ -79,12 +79,19 @@ pub fn get(url: &str) -> TestRequest {
     }
 }
 
-pub fn post<T: Serialize>(url: &str, body: T) -> TestRequest {
+pub fn post<T: Serialize>(url: &str, body: Option<T>) -> TestRequest {
+    let body = body.map(|body| serde_json::to_value(body).unwrap());
+    let kind = TestRequestKind::Post(body);
+
     TestRequest {
         url: url.to_string(),
         headers: HashMap::new(),
-        kind: TestRequestKind::Post(serde_json::to_value(body).unwrap()),
+        kind,
     }
+}
+
+pub fn empty_post(url: &str) -> TestRequest {
+    post(url, None::<()>)
 }
 
 #[derive(Debug)]
@@ -97,7 +104,7 @@ pub struct TestRequest {
 #[derive(Debug)]
 pub enum TestRequestKind {
     Get,
-    Post(Value),
+    Post(Option<Value>),
 }
 
 impl TestRequest {
@@ -108,8 +115,10 @@ impl TestRequest {
             TestRequestKind::Get => Request::new(Method::Get, url),
             TestRequestKind::Post(body) => {
                 let mut req = Request::new(Method::Post, url);
-                req.set_body(body.to_string());
-                req.set_content_type("application/json".parse().unwrap());
+                if let Some(body) = body {
+                    req.set_body(body.to_string());
+                    req.set_content_type("application/json".parse().unwrap());
+                }
                 req
             }
         };
@@ -133,10 +142,10 @@ pub async fn create_user_and_authenticate(
 ) -> TokenResponse {
     let resp = post(
         "/users",
-        CreateUserPayload {
+        Some(CreateUserPayload {
             username: username.unwrap_or_else(|| "bob".to_string()),
             password: "foobar".to_string(),
-        },
+        }),
     )
     .send(server)
     .await;

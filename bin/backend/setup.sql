@@ -25,3 +25,13 @@ create table tweets (
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null
 );
+
+create table follows (
+    id uuid primary key,
+    follower_id uuid not null references users (id),
+    followee_id uuid not null references users (id),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null
+);
+
+create unique index follows_follower_followee on follows(follower_id, followee_id);

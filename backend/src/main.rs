@@ -49,6 +49,15 @@ async fn server(db_pool: PgPool) -> Server<State> {
     server
         .at("/users/:username/session")
         .post(endpoints::users::login);
+    server
+        .at("/users/:username/follow")
+        .post(endpoints::users::follow);
+    server
+        .at("/users/:username/following")
+        .get(endpoints::users::following);
+    server
+        .at("/users/:username/followers")
+        .get(endpoints::users::followers);
 
     server.at("/me").get(endpoints::me::get);
 

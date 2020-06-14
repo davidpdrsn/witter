@@ -46,9 +46,14 @@ async fn logging_in_with_invalid_auth_header() {
 async fn logging_in_with_unknown_user_gives_404() {
     let mut server = test_setup().await;
 
-    let res = post("/users/bob/session", json!({ "password": "foobar" }))
-        .send(&mut server)
-        .await;
+    let res = post(
+        "/users/bob/session",
+        Some(LoginPayload {
+            password: "foobar".to_string(),
+        }),
+    )
+    .send(&mut server)
+    .await;
     assert_eq!(res.status(), 404);
 }
 
@@ -60,9 +65,9 @@ async fn logging_in_with_invalid_token() {
 
     let res = post(
         "/users/bob/session",
-        LoginPayload {
+        Some(LoginPayload {
             password: "baz".to_string(),
-        },
+        })
     )
     .send(&mut server)
     .await;

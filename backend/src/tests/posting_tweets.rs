@@ -8,9 +8,9 @@ async fn posting_a_valid_tweet() {
 
     let resp = post(
         "/tweets",
-        CreateTweetPayload {
+        Some(CreateTweetPayload {
             text: "Hello, World!".to_string(),
-        },
+        }),
     )
     .header("Authorization", format!("Bearer {}", token))
     .send(&mut server)
@@ -37,7 +37,7 @@ async fn posting_a_tweet_that_is_too_long() {
     let token = create_user_and_authenticate(&mut server, None).await.token;
 
     let text = std::iter::repeat('a').take(1000).collect::<String>();
-    let resp = post("/tweets", CreateTweetPayload { text })
+    let resp = post("/tweets", Some(CreateTweetPayload { text }))
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;
@@ -63,7 +63,7 @@ async fn posting_a_tweet_with_exactly_the_max_length() {
     let token = create_user_and_authenticate(&mut server, None).await.token;
 
     let text = std::iter::repeat('a').take(MAX_TWEET_LENGTH).collect::<String>();
-    let resp = post("/tweets", CreateTweetPayload { text })
+    let resp = post("/tweets", Some(CreateTweetPayload { text }))
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;

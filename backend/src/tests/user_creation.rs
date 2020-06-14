@@ -26,9 +26,9 @@ async fn creating_a_user_and_logging_in() {
 
     let res = post(
         "/users/bob/session",
-        LoginPayload {
+        Some(LoginPayload {
             password: "foobar".to_string(),
-        },
+        }),
     )
     .send(&mut server)
     .await;
@@ -54,10 +54,10 @@ async fn claiming_username_already_claimed_gives_client_error() {
 
     let res = post(
         "/users",
-        CreateUserPayload {
+        Some(CreateUserPayload {
             username,
             password: "bar".to_string(),
-        },
+        }),
     )
     .send(&mut server)
     .await;
