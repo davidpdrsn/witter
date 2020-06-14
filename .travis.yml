@@ -9,7 +9,7 @@ services:
   - postgresql
 
 script:
-  - psql -a -U postgres -f backend/bin/setup.sql
+  - psql -a -U postgres -f bin/backend/setup.sql
   - cargo test --verbose
 
 env:
