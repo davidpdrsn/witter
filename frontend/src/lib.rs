@@ -1,17 +1,17 @@
+use seed::browser::fetch::header::Header;
 use seed::virtual_dom::el_ref::el_ref;
 use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::future::Future;
+use shared::responses::{ApiResponse, TokenResponse, UserResponse};
+use shared::payloads::CreateUserPayload;
 use web_sys::HtmlInputElement;
-use seed::browser::fetch::header::Header;
 
 #[derive(Debug)]
 struct Model {
     username_input: ElRef<HtmlInputElement>,
     password_input: ElRef<HtmlInputElement>,
     auth_token: Option<String>,
-    me: Option<User>,
+    me: Option<UserResponse>,
 }
 
 impl Default for Model {
@@ -29,14 +29,14 @@ impl Default for Model {
 enum Msg {
     CreateUserFormSubmitted,
     Authenticated(String),
-    MeLoaded(User),
+    MeLoaded(UserResponse),
     #[allow(dead_code)]
     Noop,
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Noop => {},
+        Msg::Noop => {}
         Msg::Authenticated(token) => {
             model.auth_token = Some(token);
 
@@ -50,14 +50,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let user = resp
                     .check_status()
                     .expect("status check failed")
-                    .json::<Data<User>>()
+                    .json::<ApiResponse<UserResponse>>()
                     .await
                     .expect("deserialization failed")
                     .data;
 
                 Msg::MeLoaded(user)
             });
-        },
+        }
         Msg::MeLoaded(user) => {
             model.me = Some(user);
             log!(model);
@@ -77,7 +77,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let token = resp
                     .check_status()
                     .expect("status check failed")
-                    .json::<Data<Token>>()
+                    .json::<ApiResponse<TokenResponse>>()
                     .await
                     .expect("deserialization failed")
                     .data
@@ -87,28 +87,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             });
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct CreateUserPayload {
-    username: String,
-    password: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct Data<T> {
-    data: T,
-}
-
-#[derive(Debug, Deserialize)]
-struct Token {
-    token: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct User {
-    username: String,
-    // TODO: id: Uuid,
 }
 
 fn view(model: &Model) -> Node<Msg> {

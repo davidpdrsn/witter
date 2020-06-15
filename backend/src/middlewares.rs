@@ -1,6 +1,6 @@
 use crate::State;
 use futures::future::BoxFuture;
-use http_types::{headers, Method, StatusCode};
+use tide::http::{headers, Method, StatusCode};
 use serde_json::json;
 use std::future::Future;
 use std::pin::Pin;
@@ -33,7 +33,9 @@ impl Middleware<State> for ErrorReponseToJson {
                         }
                     });
 
-                    Ok(Response::new(status).body_json(&body)?)
+                    let mut resp = Response::new(status);
+                    resp.set_body(body);
+                    Ok(resp)
                 }
             }
         })
@@ -117,8 +119,8 @@ impl CorsMiddleware {
         }
     }
 
-    fn build_preflight_response(&self, origin: &[HeaderValue]) -> http_types::Response {
-        let mut response = http_types::Response::new(StatusCode::Ok);
+    fn build_preflight_response(&self, origin: &[HeaderValue]) -> tide::http::Response {
+        let mut response = tide::http::Response::new(StatusCode::Ok);
         response
             .insert_header(headers::ACCESS_CONTROL_ALLOW_ORIGIN, origin.clone())
             .unwrap();
@@ -173,31 +175,33 @@ impl<State: Send + Sync + 'static> Middleware<State> for CorsMiddleware {
         next: Next<'a, State>,
     ) -> BoxFuture<'a, tide::Result> {
         Box::pin(async move {
-            let origins = req.header(&headers::ORIGIN).cloned().unwrap_or_default();
-
             // TODO: how should multiple origin values be handled?
-            let origin = match origins.first() {
-                Some(origin) => origin,
-                None => {
-                    // This is not a CORS request if there is no Origin header
-                    return next.run(req).await;
-                }
-            };
+            let origins = req.header(&headers::ORIGIN).cloned();
+
+            if origins.is_none() {
+                // This is not a CORS request if there is no Origin header
+                return next.run(req).await;
+            }
+
+            let origins = origins.unwrap();
+            let origin = origins.last();
 
             if !self.is_valid_origin(origin) {
-                return Ok(http_types::Response::new(StatusCode::Unauthorized).into());
+                return Ok(tide::http::Response::new(StatusCode::Unauthorized).into());
             }
 
             // Return results immediately upon preflight request
             if req.method() == Method::Options {
-                return Ok(self.build_preflight_response(&origins).into());
+                return Ok(self.build_preflight_response(&[origin.clone()]).into());
             }
 
-            let mut response: http_service::Response = match next.run(req).await {
+            let mut response: tide::http::Response = match next.run(req).await {
                 Ok(resp) => resp.into(),
-                Err(err) => Response::new(err.status())
-                    .body_string(format!("{}", err))
-                    .into(),
+                Err(err) => {
+                    let mut resp = Response::new(err.status());
+                    resp.set_body(format!("{}", err));
+                    resp.into()
+                }
             };
 
             response

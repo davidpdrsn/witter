@@ -1,20 +1,22 @@
 use crate::State;
-use crate::responses::User;
+use shared::responses::UserResponse;
 use lazy_static::lazy_static;
 use regex::Regex;
 use tide::Request;
 use tide::http::Error;
 use tide::http::StatusCode;
 use sqlx::query_as;
+use tide::http::headers::HeaderName;
 
 pub mod me;
 pub mod users;
+pub mod tweets;
 
 lazy_static! {
     static ref BEARER_TOKEN_REGEX: Regex = Regex::new("^Bearer (.*)$").unwrap();
 }
 
-pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
+pub async fn authenticate(req: &Request<State>) -> Result<UserResponse, Error> {
     let header_value = get_header("Authorization", req)?;
 
     let caps = match BEARER_TOKEN_REGEX.captures(header_value) {
@@ -30,7 +32,7 @@ pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
 
     let db_pool = &req.state().db_pool;
     let user = query_as!(
-        User,
+        UserResponse,
         r#"
             select users.id, users.username
             from users
@@ -47,7 +49,7 @@ pub async fn authenticate(req: &Request<State>) -> Result<User, Error> {
 }
 
 fn get_header<'a>(header_key: &str, req: &'a Request<State>) -> Result<&'a str, Error> {
-    let auth_header_key = header_key.parse()?;
+    let auth_header_key: HeaderName = header_key.parse()?;
 
     let header_value = (|| {
         let value = req.header(&auth_header_key)?.get(0)?;

@@ -103,7 +103,7 @@ async fn run_migrations(db_url: &str) {
         .unwrap();
 
     // Run the migrations
-    let sql = async_std::fs::read_to_string("bin/setup.sql")
+    let sql = async_std::fs::read_to_string("../bin/backend/setup.sql")
         .await
         .unwrap();
 
