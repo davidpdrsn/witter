@@ -124,7 +124,7 @@ impl TestRequest {
         };
 
         for (key, value) in self.headers {
-            req.insert_header(key.as_str(), value.as_str());
+            req.append_header(key.as_str(), value.as_str());
         }
 
         server.simulate(req).await.unwrap()
