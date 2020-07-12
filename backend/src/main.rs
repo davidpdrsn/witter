@@ -1,8 +1,8 @@
 use dotenv;
 
-use tide::http::headers::HeaderValue;
 use sqlx::PgPool;
 use sqlx::Pool;
+use tide::http::headers::HeaderValue;
 use tide::security::Origin;
 use tide::Server;
 

@@ -1,16 +1,16 @@
 use crate::State;
-use shared::responses::UserResponse;
 use lazy_static::lazy_static;
 use regex::Regex;
-use tide::Request;
-use tide::http::Error;
-use tide::http::StatusCode;
+use shared::responses::UserResponse;
 use sqlx::query_as;
 use tide::http::headers::HeaderName;
+use tide::http::Error;
+use tide::http::StatusCode;
+use tide::Request;
 
 pub mod me;
-pub mod users;
 pub mod tweets;
+pub mod users;
 
 lazy_static! {
     static ref BEARER_TOKEN_REGEX: Regex = Regex::new("^Bearer (.*)$").unwrap();
