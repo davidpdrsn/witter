@@ -24,12 +24,16 @@ pub use shared::responses::*;
 pub use tide::http::headers::HeaderName;
 pub use tide::http::Request;
 pub use tide::http::Response;
-pub use tide::http::{Method, Url};
+pub use tide::{
+    http::{Method, Url},
+    StatusCode,
+};
 
 pub async fn test_setup() -> TestServer {
     std::env::set_var("APP_ENV", "test");
     dotenv::dotenv().ok();
-    pretty_env_logger::try_init().ok();
+
+    // pretty_env_logger::try_init().ok();
 
     let test_db = TestDb::new().await;
     let db_pool = test_db.db();
@@ -108,7 +112,10 @@ pub enum TestRequestKind {
 }
 
 impl TestRequest {
-    pub async fn send(self, server: &mut TestServer) -> Response {
+    pub async fn send(
+        self,
+        server: &mut TestServer,
+    ) -> (Value, StatusCode, HashMap<String, String>) {
         let url = Url::parse(&format!("http://example.com{}", self.url)).unwrap();
 
         let mut req = match self.kind {
@@ -127,7 +134,19 @@ impl TestRequest {
             req.append_header(key.as_str(), value.as_str());
         }
 
-        server.simulate(req).await.unwrap()
+        let res = server.simulate(req).await.unwrap();
+        let status = res.status();
+        let headers = res
+            .iter()
+            .flat_map(|(key, values)| {
+                values
+                    .iter()
+                    .map(move |value| (key.as_str().to_string(), value.as_str().to_string()))
+            })
+            .collect::<HashMap<_, _>>();
+        let json = res.body_json::<Value>().await.unwrap();
+
+        (json, status, headers)
     }
 
     pub fn header(mut self, key: &str, value: impl ToString) -> Self {
@@ -140,7 +159,7 @@ pub async fn create_user_and_authenticate(
     server: &mut TestServer,
     username: Option<String>,
 ) -> TokenResponse {
-    let resp = post(
+    let (json, status, _) = post(
         "/users",
         Some(CreateUserPayload {
             username: username.unwrap_or_else(|| "bob".to_string()),
@@ -149,11 +168,9 @@ pub async fn create_user_and_authenticate(
     )
     .send(server)
     .await;
-    assert_eq!(resp.status(), 201);
+    assert_eq!(status, 201);
 
-    let resp = resp
-        .body_json::<ApiResponse<TokenResponse>>()
-        .await
-        .unwrap();
-    resp.data
+    serde_json::from_value::<ApiResponse<TokenResponse>>(json)
+        .unwrap()
+        .data
 }

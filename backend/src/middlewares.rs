@@ -24,11 +24,28 @@ impl Middleware<State> for ErrorReponseToJson {
             let resp = next.run(req).await;
 
             match resp {
-                Ok(resp) => Ok(resp),
+                Ok(mut resp) => {
+                    let body = resp.take_body();
+                    if body.is_empty().expect("no length on response body") {
+                        let status = resp.status();
+                        let new_body = json!({
+                            "error": {
+                                "status_code": status.to_string(),
+                                "message": "Something went wrong",
+                            }
+                        });
+                        resp.set_body(new_body);
+                    } else {
+                        resp.set_body(body);
+                    }
+
+                    Ok(resp)
+                }
                 Err(err) => {
                     let status = err.status();
                     let body = json!({
                         "error": {
+                            "status_code": status.to_string(),
                             "message": format!("{}", err),
                         }
                     });
@@ -56,6 +73,7 @@ pub struct CorsMiddleware {
     max_age: HeaderValue,
 }
 
+#[allow(dead_code)]
 impl CorsMiddleware {
     /// Creates a new Cors middleware.
     pub fn new() -> Self {

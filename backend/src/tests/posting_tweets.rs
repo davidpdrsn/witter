@@ -6,7 +6,7 @@ async fn posting_a_valid_tweet() {
 
     let token = create_user_and_authenticate(&mut server, None).await.token;
 
-    let resp = post(
+    let (json, status, _) = post(
         "/tweets",
         Some(CreateTweetPayload {
             text: "Hello, World!".to_string(),
@@ -15,9 +15,8 @@ async fn posting_a_valid_tweet() {
     .header("Authorization", format!("Bearer {}", token))
     .send(&mut server)
     .await;
-    assert_eq!(resp.status(), 201);
+    assert_eq!(status, 201);
 
-    let json = resp.body_json::<Value>().await.unwrap();
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -37,13 +36,12 @@ async fn posting_a_tweet_that_is_too_long() {
     let token = create_user_and_authenticate(&mut server, None).await.token;
 
     let text = std::iter::repeat('a').take(1000).collect::<String>();
-    let resp = post("/tweets", Some(CreateTweetPayload { text }))
+    let (json, status, _) = post("/tweets", Some(CreateTweetPayload { text }))
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 422);
+    assert_eq!(status, 422);
 
-    let json = resp.body_json::<Value>().await.unwrap();
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -63,13 +61,12 @@ async fn posting_a_tweet_with_exactly_the_max_length() {
     let token = create_user_and_authenticate(&mut server, None).await.token;
 
     let text = std::iter::repeat('a').take(MAX_TWEET_LENGTH).collect::<String>();
-    let resp = post("/tweets", Some(CreateTweetPayload { text }))
+    let (json, status, _) = post("/tweets", Some(CreateTweetPayload { text }))
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 201);
+    assert_eq!(status, 201);
 
-    let json = resp.body_json::<Value>().await.unwrap();
     assert_json_include!(
         actual: json,
         expected: json!({

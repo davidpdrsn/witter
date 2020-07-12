@@ -1,9 +1,8 @@
 use seed::browser::fetch::header::Header;
 use seed::virtual_dom::el_ref::el_ref;
 use seed::{prelude::*, *};
-use serde::{Deserialize, Serialize};
-use shared::responses::{ApiResponse, TokenResponse, UserResponse};
 use shared::payloads::CreateUserPayload;
+use shared::responses::{ApiResponse, TokenResponse, UserResponse};
 use web_sys::HtmlInputElement;
 
 #[derive(Debug)]

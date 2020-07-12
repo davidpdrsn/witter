@@ -8,13 +8,12 @@ async fn creating_a_user_and_logging_in() {
         .await
         .token;
 
-    let res = get("/me")
+    let (json, status, _) = get("/me")
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;
-    assert_eq!(res.status(), 200);
+    assert_eq!(status, 200);
 
-    let json = res.body_json::<Value>().await.unwrap();
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -24,7 +23,7 @@ async fn creating_a_user_and_logging_in() {
         })
     );
 
-    let res = post(
+    let (json, status, _) = post(
         "/users/bob/session",
         Some(LoginPayload {
             password: "foobar".to_string(),
@@ -32,8 +31,7 @@ async fn creating_a_user_and_logging_in() {
     )
     .send(&mut server)
     .await;
-    assert_eq!(res.status(), 201);
-    let json = res.body_json::<Value>().await.unwrap();
+    assert_eq!(status, 201);
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -52,7 +50,7 @@ async fn claiming_username_already_claimed_gives_client_error() {
 
     create_user_and_authenticate(&mut server, Some(username.clone())).await;
 
-    let res = post(
+    let (json, status, _) = post(
         "/users",
         Some(CreateUserPayload {
             username,
@@ -61,10 +59,8 @@ async fn claiming_username_already_claimed_gives_client_error() {
     )
     .send(&mut server)
     .await;
-    assert_eq!(res.status(), 422);
 
-    let json = res.body_json::<Value>().await.unwrap();
-
+    assert_eq!(status, 422);
     assert_json_include!(
         actual: json,
         expected: json!({

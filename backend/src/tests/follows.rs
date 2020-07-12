@@ -10,33 +10,28 @@ async fn following_another_user() {
     create_user_and_authenticate(&mut server, Some("alice".to_string())).await;
 
     for username in &["bob", "alice"] {
-        let resp = get(&format!("/users/{}/following", username))
+        let (json, status, _) = get(&format!("/users/{}/following", username))
             .send(&mut server)
             .await;
-        assert_eq!(resp.status(), 200);
-        let json = resp.body_json::<Value>().await.unwrap();
+        assert_eq!(status, 200);
         assert_json_eq!(json, json!({ "data": [] }));
 
-        let resp = get(&format!("/users/{}/followers", username))
+        let (json, status, _) = get(&format!("/users/{}/followers", username))
             .send(&mut server)
             .await;
-        assert_eq!(resp.status(), 200);
-        let json = resp.body_json::<Value>().await.unwrap();
+        assert_eq!(status, 200);
         assert_json_eq!(json, json!({ "data": [] }));
     }
 
-    let resp = empty_post("/users/alice/follow")
+    let (json, status, _) = empty_post("/users/alice/follow")
         .header("Authorization", format!("Bearer {}", bobs_token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 201);
-
-    let json = resp.body_json::<Value>().await.unwrap();
+    assert_eq!(status, 201);
     assert_json_include!(actual: json, expected: json!({ "data": null }));
 
-    let resp = get("/users/bob/following").send(&mut server).await;
-    assert_eq!(resp.status(), 200);
-    let json = resp.body_json::<Value>().await.unwrap();
+    let (json, status, _) = get("/users/bob/following").send(&mut server).await;
+    assert_eq!(status, 200);
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -48,9 +43,8 @@ async fn following_another_user() {
         })
     );
 
-    let resp = get("/users/alice/following").send(&mut server).await;
-    assert_eq!(resp.status(), 200);
-    let json = resp.body_json::<Value>().await.unwrap();
+    let (json, status, _) = get("/users/alice/following").send(&mut server).await;
+    assert_eq!(status, 200);
     assert_json_eq!(
         json,
         json!({
@@ -58,9 +52,8 @@ async fn following_another_user() {
         })
     );
 
-    let resp = get("/users/bob/followers").send(&mut server).await;
-    assert_eq!(resp.status(), 200);
-    let json = resp.body_json::<Value>().await.unwrap();
+    let (json, status, _) = get("/users/bob/followers").send(&mut server).await;
+    assert_eq!(status, 200);
     assert_json_eq!(
         json,
         json!({
@@ -68,9 +61,8 @@ async fn following_another_user() {
         })
     );
 
-    let resp = get("/users/alice/followers").send(&mut server).await;
-    assert_eq!(resp.status(), 200);
-    let json = resp.body_json::<Value>().await.unwrap();
+    let (json, status, _) = get("/users/alice/followers").send(&mut server).await;
+    assert_eq!(status, 200);
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -92,18 +84,17 @@ async fn follow_same_user_twice() {
         .token;
     create_user_and_authenticate(&mut server, Some("alice".to_string())).await;
 
-    let resp = empty_post("/users/alice/follow")
+    let (_, status, _) = empty_post("/users/alice/follow")
         .header("Authorization", format!("Bearer {}", bobs_token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 201);
+    assert_eq!(status, 201);
 
-    let resp = empty_post("/users/alice/follow")
+    let (json, status, _) = empty_post("/users/alice/follow")
         .header("Authorization", format!("Bearer {}", bobs_token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 422);
-    let json = resp.body_json::<Value>().await.unwrap();
+    assert_eq!(status, 422);
     assert_json_include!(
         actual: json,
         expected: json!({
@@ -122,13 +113,11 @@ async fn cannot_follow_self() {
         .await
         .token;
 
-    let resp = empty_post("/users/bob/follow")
+    let (json, status, _) = empty_post("/users/bob/follow")
         .header("Authorization", format!("Bearer {}", bobs_token))
         .send(&mut server)
         .await;
-    assert_eq!(resp.status(), 422);
-
-    let json = resp.body_json::<Value>().await.unwrap();
+    assert_eq!(status, 422);
     assert_json_include!(
         actual: json,
         expected: json!({
