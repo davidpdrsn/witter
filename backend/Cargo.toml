@@ -27,4 +27,4 @@ lazy_static = "1"
 shared = { path = "../shared", version = "0.1.0" }
 
 [dev-dependencies]
-assert-json-diff = { git = "https://github.com/davidpdrsn/assert-json-diff.git", branch = "accept-any-serializable" }
+assert-json-diff = "1.1.0"

@@ -119,8 +119,9 @@ dependencies = [
 
 [[package]]
 name = "assert-json-diff"
-version = "1.0.3"
-source = "git+https://github.com/davidpdrsn/assert-json-diff.git?branch=accept-any-serializable#c3ff361517fed2816edca321b5f1703fae2d4648"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4259cbe96513d2f1073027a259fc2ca917feb3026a5a8d984e3628e490255cc0"
 dependencies = [
  "extend",
  "serde",
