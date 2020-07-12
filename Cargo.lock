@@ -120,8 +120,7 @@ dependencies = [
 [[package]]
 name = "assert-json-diff"
 version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c356497fd3417158bcb318266ac83c391219ca3a5fa659049f42e0041ab57d6"
+source = "git+https://github.com/davidpdrsn/assert-json-diff.git?branch=accept-any-serializable#c3ff361517fed2816edca321b5f1703fae2d4648"
 dependencies = [
  "extend",
  "serde",

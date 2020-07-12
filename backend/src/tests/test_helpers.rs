@@ -69,7 +69,7 @@ impl BodyJson for Response {
     ) -> Pin<Box<dyn Future<Output = Result<T, Box<dyn std::error::Error>>>>> {
         Box::pin(async move {
             let body = self.body_string().await?;
-            dbg!(&body);
+            println!("body = {}", body);
             Ok(serde_json::from_str(&body)?)
         })
     }
