@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 async-std = { version = "1.6", features = ["attributes", "unstable"] }
-tide = "0.10"
+tide = "0.11"
 sqlx = { version = "0.3", features = ["runtime-async-std", "macros", "chrono", "json", "postgres", "uuid"] }
 dotenv = "0.15"
 pretty_env_logger = "0.4"
