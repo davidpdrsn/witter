@@ -264,3 +264,26 @@ async fn user_following(
 
     Ok(row.is_some())
 }
+
+pub async fn get(req: Request<State>) -> tide::Result {
+    let db_pool = &req.state().db_pool;
+    let username = req.param::<String>("username")?;
+
+    let user = query_as!(
+        UserResponse,
+        r#"
+            select id, username
+            from users
+            where username = $1
+        "#,
+        username
+    )
+    .fetch_optional(db_pool)
+    .await?;
+
+    if let Some(user) = user {
+        user.to_response()
+    } else {
+        Err(Error::from_str(StatusCode::NotFound, "User not found"))
+    }
+}
