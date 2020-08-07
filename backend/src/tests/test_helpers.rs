@@ -94,6 +94,14 @@ pub fn post<T: Serialize>(url: &str, body: Option<T>) -> TestRequest {
     }
 }
 
+pub fn delete(url: &str) -> TestRequest {
+    TestRequest {
+        url: url.to_string(),
+        headers: HashMap::new(),
+        kind: TestRequestKind::Delete,
+    }
+}
+
 pub fn empty_post(url: &str) -> TestRequest {
     post(url, None::<()>)
 }
@@ -109,6 +117,7 @@ pub struct TestRequest {
 pub enum TestRequestKind {
     Get,
     Post(Option<Value>),
+    Delete,
 }
 
 impl TestRequest {
@@ -127,7 +136,8 @@ impl TestRequest {
                     req.set_content_type("application/json".parse().unwrap());
                 }
                 req
-            }
+            },
+            TestRequestKind::Delete => Request::new(Method::Delete, url),
         };
 
         for (key, value) in self.headers {

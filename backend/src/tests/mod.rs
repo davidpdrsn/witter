@@ -7,3 +7,4 @@ mod posting_tweets;
 mod user_creation;
 mod timeline;
 mod users;
+mod logout;

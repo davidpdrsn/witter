@@ -39,7 +39,7 @@ async fn authenticating_with_invalid_auth_header() {
 async fn logging_in_with_unknown_user_gives_404() {
     let mut server = test_setup().await;
 
-    let (_, status, _) = post(
+    let (json, status, _) = post(
         "/users/bob/session",
         Some(LoginPayload {
             password: "foobar".to_string(),
@@ -48,6 +48,16 @@ async fn logging_in_with_unknown_user_gives_404() {
     .send(&mut server)
     .await;
     assert_eq!(status, 404);
+
+    assert_json_include!(
+        actual: json,
+        expected: json!({
+            "error": {
+                "status_code": "404",
+                "message": "User not found",
+            }
+        }),
+    );
 }
 
 #[async_std::test]

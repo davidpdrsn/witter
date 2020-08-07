@@ -1,4 +1,4 @@
-use super::authenticate;
+use super::{authenticate, empty_response, get_auth_token};
 use crate::env;
 use crate::responses::BuildApiResponse;
 use crate::State;
@@ -113,7 +113,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     .await?;
     let user = match user {
         Some(user) => user,
-        None => return Ok(Response::new(StatusCode::NotFound)),
+        None => return Err(Error::from_str(StatusCode::NotFound, "User not found")),
     };
     let user_password = user.hashed_password;
 
@@ -286,4 +286,16 @@ pub async fn get(req: Request<State>) -> tide::Result {
     } else {
         Err(Error::from_str(StatusCode::NotFound, "User not found"))
     }
+}
+
+pub async fn logout(req: Request<State>) -> tide::Result {
+    let _ = authenticate(&req).await?;
+    let auth_token = get_auth_token(&req)?;
+
+    let db_pool = &req.state().db_pool;
+    query!("delete from auth_tokens where token = $1", auth_token)
+        .execute(db_pool)
+        .await?;
+
+    empty_response()
 }

@@ -3,32 +3,59 @@ use seed::virtual_dom::el_ref::el_ref;
 use seed::{prelude::*, *};
 use shared::payloads::CreateUserPayload;
 use shared::responses::{ApiResponse, TokenResponse, UserResponse};
+use std::fmt;
 use web_sys::HtmlInputElement;
 
+mod api;
+mod view;
+
 #[derive(Debug)]
-struct Model {
-    username_input: ElRef<HtmlInputElement>,
-    password_input: ElRef<HtmlInputElement>,
+pub struct Model {
+    login_form: LoginForm,
+    sign_up_form: SignUpForm,
     auth_token: Option<String>,
-    me: Option<UserResponse>,
+    current_user: Option<UserResponse>,
+    page: Page,
 }
 
-impl Default for Model {
-    fn default() -> Self {
-        Self {
-            username_input: ElRef::default(),
-            password_input: ElRef::default(),
-            auth_token: None,
-            me: None,
+#[derive(Debug, Default)]
+struct LoginForm {
+    username_input: ElRef<HtmlInputElement>,
+    password_input: ElRef<HtmlInputElement>,
+}
+
+#[derive(Debug, Default)]
+struct SignUpForm {
+    username_input: ElRef<HtmlInputElement>,
+    password_input: ElRef<HtmlInputElement>,
+}
+
+#[derive(Debug)]
+pub enum Page {
+    Root,
+    Login,
+    SignUp,
+    UserProfile(String),
+}
+
+impl fmt::Display for Page {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Page::Root => write!(f, "/"),
+            Page::Login => write!(f, "/login"),
+            Page::SignUp => write!(f, "/sign_up"),
+            Page::UserProfile(username) => write!(f, "/users/{}", username.clone()),
         }
     }
 }
 
 #[derive(Clone)]
-enum Msg {
-    CreateUserFormSubmitted,
-    Authenticated(String),
+pub enum Msg {
+    LoginFormSubmitted,
+    SignUpFormSubmitted,
+    CreateUserEndpointResponded(String),
     MeLoaded(UserResponse),
+    UrlChanged(subs::UrlChanged),
     #[allow(dead_code)]
     Noop,
 }
@@ -36,82 +63,68 @@ enum Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Noop => {}
-        Msg::Authenticated(token) => {
-            model.auth_token = Some(token);
-
-            let auth_token = model.auth_token.clone().unwrap();
-            orders.perform_cmd(async move {
-                let req = Request::new("http://localhost:8080/me")
-                    .header(Header::bearer(auth_token))
-                    .method(Method::Get);
-                let resp = fetch(req).await.unwrap();
-
-                let user = resp
-                    .check_status()
-                    .expect("status check failed")
-                    .json::<ApiResponse<UserResponse>>()
-                    .await
-                    .expect("deserialization failed")
-                    .data;
-
-                Msg::MeLoaded(user)
-            });
+        Msg::UrlChanged(subs::UrlChanged(url)) => {
+            log!("url changed to", url.to_string());
+            let page = url_to_page(&url);
+            model.page = page;
+            // seed::push_route(url);
         }
+
         Msg::MeLoaded(user) => {
-            model.me = Some(user);
-            log!(model);
+            model.current_user = Some(user);
+            log!("me loaded", model);
         }
-        Msg::CreateUserFormSubmitted => {
-            let username = model.username_input.get().unwrap().value();
-            let password = model.password_input.get().unwrap().value();
 
-            orders.perform_cmd(async {
-                let form = CreateUserPayload { username, password };
-                let req = Request::new("http://localhost:8080/users")
-                    .method(Method::Post)
-                    .json(&form)
-                    .unwrap();
-                let resp = fetch(req).await.unwrap();
+        Msg::LoginFormSubmitted => {
+            // let form = &model.login_form;
+            // let username = form.username_input.get().unwrap().value();
+            // let password = form.password_input.get().unwrap().value();
+            // orders.perform_cmd(api::login(username, password));
+        }
 
-                let token = resp
-                    .check_status()
-                    .expect("status check failed")
-                    .json::<ApiResponse<TokenResponse>>()
-                    .await
-                    .expect("deserialization failed")
-                    .data
-                    .token;
-
-                Msg::Authenticated(token)
-            });
+        Msg::SignUpFormSubmitted => {
+            let form = &model.sign_up_form;
+            let username = form.username_input.get().unwrap().value();
+            let password = form.password_input.get().unwrap().value();
+            orders.perform_cmd(api::create_user(username, password));
+        }
+        Msg::CreateUserEndpointResponded(token) => {
+            model.auth_token = Some(token.clone());
+            orders.perform_cmd(api::reload_current_user(token.to_string()));
         }
     }
 }
 
-fn view(model: &Model) -> Node<Msg> {
-    div![
-        div![input![
-            el_ref(&model.username_input),
-            attrs! { At::Placeholder => "Username" },
-        ]],
-        div![input![
-            el_ref(&model.password_input),
-            attrs! { At::Placeholder => "Password" },
-        ]],
-        div![button![
-            "Submit",
-            ev(Ev::Click, |_| Msg::CreateUserFormSubmitted),
-        ]]
-    ]
+fn url_to_page(url: &Url) -> Page {
+    let path = url.path().iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
+    match path.as_slice() {
+        ["sign_up"] => Page::SignUp,
+        ["login"] => Page::Login,
+        ["users", username] => Page::UserProfile(username.to_string()),
+        [] => Page::Root,
+        _ => todo!(),
+    }
 }
 
-fn after_mount(_: Url, _: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    AfterMount::default()
+fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    log!("after mount", url.to_string());
+
+    orders.subscribe(Msg::UrlChanged);
+    orders.send_msg(Msg::UrlChanged(subs::UrlChanged(url.clone())));
+
+    let page = url_to_page(&url);
+
+    Model {
+        auth_token: None,
+        current_user: None,
+        page,
+        login_form: Default::default(),
+        sign_up_form: Default::default(),
+    }
 }
 
 #[wasm_bindgen(start)]
 pub fn start() {
-    App::builder(update, view)
-        .after_mount(after_mount)
-        .build_and_start();
+    App::start("app", init, update, view::view);
 }

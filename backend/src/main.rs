@@ -3,6 +3,7 @@ use dotenv;
 use sqlx::PgPool;
 use sqlx::Pool;
 use tide::http::headers::HeaderValue;
+use tide::security::CorsMiddleware;
 use tide::security::Origin;
 use tide::Server;
 
@@ -33,8 +34,8 @@ pub async fn make_db_pool() -> PgPool {
 async fn server(db_pool: PgPool) -> Server<State> {
     let mut server: Server<State> = Server::with_state(State { db_pool });
 
-    server.middleware(
-        middlewares::CorsMiddleware::new()
+    server.with(
+        CorsMiddleware::new()
             .allow_methods(
                 "GET, POST, PUT, PATCH, DELETE, OPTIONS"
                     .parse::<HeaderValue>()
@@ -42,13 +43,13 @@ async fn server(db_pool: PgPool) -> Server<State> {
             )
             .allow_origin(Origin::Any),
     );
-
-    server.middleware(middlewares::ErrorReponseToJson);
+    server.with(middlewares::ErrorReponseToJson);
 
     server.at("/users").post(endpoints::users::create);
     server
         .at("/users/:username/session")
-        .post(endpoints::users::login);
+        .post(endpoints::users::login)
+        .delete(endpoints::users::logout);
     server
         .at("/users/:username/follow")
         .post(endpoints::users::follow);
@@ -58,9 +59,7 @@ async fn server(db_pool: PgPool) -> Server<State> {
     server
         .at("/users/:username/followers")
         .get(endpoints::users::followers);
-    server
-        .at("/users/:username")
-        .get(endpoints::users::get);
+    server.at("/users/:username").get(endpoints::users::get);
 
     server.at("/me").get(endpoints::me::get);
     server.at("/me/timeline").get(endpoints::me::timeline);
@@ -70,7 +69,7 @@ async fn server(db_pool: PgPool) -> Server<State> {
     server
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct State {
     db_pool: PgPool,
 }
