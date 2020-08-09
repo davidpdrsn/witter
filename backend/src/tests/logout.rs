@@ -24,5 +24,5 @@ async fn logging_out() {
         .header("Authorization", format!("Bearer {}", token))
         .send(&mut server)
         .await;
-    assert_eq!(status, 403);
+    assert_eq!(status, 401);
 }

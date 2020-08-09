@@ -32,10 +32,12 @@ pub async fn authenticate(req: &Request<State>) -> Result<UserResponse, Error> {
             "#,
         auth_token
     )
-    .fetch_one(db_pool)
+    .fetch_optional(db_pool)
     .await?;
 
-    Ok(user)
+    user.ok_or_else(|| {
+        Error::from_str(StatusCode::Unauthorized, "Invalid auth token")
+    })
 }
 
 pub fn get_auth_token(req: &Request<State>) -> Result<&str, Error> {
