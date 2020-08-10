@@ -3,8 +3,8 @@ pub mod test_helpers;
 
 mod follows;
 mod login;
-mod posting_tweets;
-mod user_creation;
-mod timeline;
-mod users;
 mod logout;
+mod posting_tweets;
+mod timeline;
+mod user_creation;
+mod users;

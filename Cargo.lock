@@ -884,6 +884,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 name = "frontend"
 version = "0.1.0"
 dependencies = [
+ "http-types",
  "seed",
  "serde",
  "serde_json",
@@ -1211,9 +1212,9 @@ dependencies = [
 
 [[package]]
 name = "http-types"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bc341c4b7a71eb0d85c760dc7363648b82ecc38fa5ead50f69b52858df708b9"
+checksum = "bb4daf8dc001485f4a32a7a17c54c67fa8a10340188f30ba87ac0fe1a9451e97"
 dependencies = [
  "anyhow",
  "async-std",
@@ -2192,6 +2193,7 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "http-types",
  "serde",
  "uuid",
 ]
@@ -2665,6 +2667,7 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

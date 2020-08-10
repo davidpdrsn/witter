@@ -1,8 +1,9 @@
 use super::{authenticate, empty_response, get_auth_token};
 use crate::env;
 use crate::responses::BuildApiResponse;
-use crate::State;
+use crate::{BackendApiEndpoint, State};
 use argonautica::{Hasher, Verifier};
+use async_trait::async_trait;
 use chrono::prelude::*;
 use failure::Fail;
 use futures::compat::Compat01As03;
@@ -12,7 +13,10 @@ use rand::Rng;
 use serde_json::Value;
 use shared::payloads::CreateUserPayload;
 use shared::payloads::LoginPayload;
-use shared::responses::{TokenResponse, UserResponse};
+use shared::{
+    responses::{TokenResponse, UserResponse},
+    GetUser, NoPayload,
+};
 use sqlx::{query, query_as, PgPool};
 use tide::Request;
 use tide::Response;
@@ -265,26 +269,29 @@ async fn user_following(
     Ok(row.is_some())
 }
 
-pub async fn get(req: Request<State>) -> tide::Result {
-    let db_pool = &req.state().db_pool;
-    let username = req.param::<String>("username")?;
+#[async_trait]
+impl BackendApiEndpoint for GetUser {
+    async fn handler(
+        req: Request<State>,
+        _: NoPayload,
+    ) -> tide::Result<(UserResponse, StatusCode)> {
+        let db_pool = &req.state().db_pool;
+        let username = req.param::<String>("username")?;
 
-    let user = query_as!(
-        UserResponse,
-        r#"
+        let user = query_as!(
+            UserResponse,
+            r#"
             select id, username
             from users
             where username = $1
         "#,
-        username
-    )
-    .fetch_optional(db_pool)
-    .await?;
+            username
+        )
+        .fetch_optional(db_pool)
+        .await?;
 
-    if let Some(user) = user {
-        user.to_response()
-    } else {
-        Err(Error::from_str(StatusCode::NotFound, "User not found"))
+        let resp = user.ok_or_else(|| Error::from_str(StatusCode::NotFound, "User not found"))?;
+        Ok((resp, StatusCode::Ok))
     }
 }
 

@@ -1,8 +1,11 @@
 use seed::browser::fetch::header::Header;
 use seed::virtual_dom::el_ref::el_ref;
 use seed::{prelude::*, *};
-use shared::payloads::CreateUserPayload;
-use shared::responses::{ApiResponse, TokenResponse, UserResponse};
+use shared::payloads::{CreateTweetPayload, CreateUserPayload};
+use shared::{
+    responses::{ApiResponse, TokenResponse, TweetResponse, UserResponse},
+    GetUser, GetUserUrl, NoPayload, PostTweet, PostTweetUrl,
+};
 use std::fmt;
 use web_sys::HtmlInputElement;
 
@@ -49,13 +52,17 @@ impl fmt::Display for Page {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub enum Msg {
     LoginFormSubmitted,
     SignUpFormSubmitted,
     CreateUserEndpointResponded(String),
     MeLoaded(UserResponse),
     UrlChanged(subs::UrlChanged),
+    LoadUserProfile(String),
+    GetUserLoaded(UserResponse),
+    TweetPosted(TweetResponse),
+    RequestFailed(FetchError),
     #[allow(dead_code)]
     Noop,
 }
@@ -64,10 +71,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Noop => {}
         Msg::UrlChanged(subs::UrlChanged(url)) => {
-            log!("url changed to", url.to_string());
             let page = url_to_page(&url);
             model.page = page;
-            // seed::push_route(url);
         }
 
         Msg::MeLoaded(user) => {
@@ -92,6 +97,27 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.auth_token = Some(token.clone());
             orders.perform_cmd(api::reload_current_user(token.to_string()));
         }
+
+        Msg::LoadUserProfile(username) => {
+            orders.perform_cmd(api::fetch::<GetUser>(
+                model.auth_token.clone(),
+                GetUserUrl { username },
+                NoPayload,
+                Msg::GetUserLoaded,
+            ));
+
+            orders.perform_cmd(api::fetch::<PostTweet>(
+                model.auth_token.clone(),
+                PostTweetUrl,
+                CreateTweetPayload {
+                    text: "Tweet text".to_string(),
+                },
+                Msg::TweetPosted,
+            ));
+        }
+        Msg::GetUserLoaded(user) => log!("user loaded", user),
+        Msg::TweetPosted(tweet) => log!(tweet),
+        Msg::RequestFailed(err) => log!("request failed", err),
     }
 }
 
@@ -108,12 +134,17 @@ fn url_to_page(url: &Url) -> Page {
 }
 
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
-    log!("after mount", url.to_string());
-
     orders.subscribe(Msg::UrlChanged);
     orders.send_msg(Msg::UrlChanged(subs::UrlChanged(url.clone())));
 
     let page = url_to_page(&url);
+
+    match &page {
+        Page::UserProfile(username) => {
+            orders.send_msg(Msg::LoadUserProfile(username.to_string()));
+        }
+        _ => {}
+    }
 
     Model {
         auth_token: None,

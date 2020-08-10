@@ -1,11 +1,14 @@
 use dotenv;
 
+use async_trait::async_trait;
+use payloads::CreateTweetPayload;
+use shared::*;
 use sqlx::PgPool;
 use sqlx::Pool;
-use tide::http::headers::HeaderValue;
+use tide::http::{headers::HeaderValue, Method};
 use tide::security::CorsMiddleware;
 use tide::security::Origin;
-use tide::Server;
+use tide::{Body, Request, Response, Server, StatusCode};
 
 #[cfg(test)]
 mod tests;
@@ -59,12 +62,13 @@ async fn server(db_pool: PgPool) -> Server<State> {
     server
         .at("/users/:username/followers")
         .get(endpoints::users::followers);
-    server.at("/users/:username").get(endpoints::users::get);
+
+    add_endpoint::<GetUser>(&mut server);
 
     server.at("/me").get(endpoints::me::get);
     server.at("/me/timeline").get(endpoints::me::timeline);
 
-    server.at("/tweets").post(endpoints::tweets::create);
+    add_endpoint::<PostTweet>(&mut server);
 
     server
 }
@@ -72,4 +76,60 @@ async fn server(db_pool: PgPool) -> Server<State> {
 #[derive(Debug, Clone)]
 pub struct State {
     db_pool: PgPool,
+}
+
+#[async_trait]
+trait BackendApiEndpoint: ApiEndpoint {
+    async fn handler(
+        req: Request<State>,
+        payload: Self::Payload,
+    ) -> tide::Result<(Self::Response, StatusCode)>;
+}
+
+#[async_trait]
+trait GetRequestPayload: Sized {
+    async fn get_payload(req: &mut Request<State>) -> tide::Result<Self>;
+}
+
+#[async_trait]
+impl GetRequestPayload for NoPayload {
+    async fn get_payload(_: &mut Request<State>) -> tide::Result<Self> {
+        Ok(NoPayload)
+    }
+}
+
+#[async_trait]
+impl GetRequestPayload for CreateTweetPayload {
+    async fn get_payload(req: &mut Request<State>) -> tide::Result<Self> {
+        req.body_json().await
+    }
+}
+
+fn add_endpoint<E>(server: &mut Server<State>)
+where
+    E: 'static + BackendApiEndpoint,
+    E::Payload: GetRequestPayload + Send,
+{
+    let mut route = server.at(<E::Url as shared::Url>::URL_SPEC);
+
+    let handler = |mut req: Request<State>| async {
+        let payload = E::Payload::get_payload(&mut req).await?;
+        let (data, status) = E::handler(req, payload).await?;
+        let mut resp = Response::new(status);
+        let body = Body::from_json(&serde_json::json!({ "data": data }))?;
+        resp.set_body(body);
+        Ok(resp)
+    };
+
+    match E::METHOD {
+        Method::Get => route.get(handler),
+        Method::Post => route.post(handler),
+        Method::Head => route.head(handler),
+        Method::Put => route.put(handler),
+        Method::Delete => route.delete(handler),
+        Method::Connect => route.connect(handler),
+        Method::Options => route.options(handler),
+        Method::Trace => route.trace(handler),
+        Method::Patch => route.patch(handler),
+    };
 }

@@ -136,7 +136,7 @@ impl TestRequest {
                     req.set_content_type("application/json".parse().unwrap());
                 }
                 req
-            },
+            }
             TestRequestKind::Delete => Request::new(Method::Delete, url),
         };
 
