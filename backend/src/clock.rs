@@ -11,8 +11,6 @@ where
     F: FnMut() -> Fut,
     Fut: Future,
 {
-    assert!(FROZEN_TIME.lock().await.is_none());
-
     *FROZEN_TIME.lock().await = Some(time);
     let result = f().await;
     *FROZEN_TIME.lock().await = None;
@@ -52,19 +50,5 @@ mod test {
         .await;
 
         assert_ne!(current_time().await, time);
-    }
-
-    #[async_std::test]
-    #[should_panic]
-    async fn cannot_nest_freezing_time() {
-        let time = Utc.ymd(1970, 1, 1).and_hms(0, 1, 1);
-
-        freeze_time::<(), _, _>(time, || async {
-            freeze_time::<(), _, _>(time, || async {
-                assert_eq!(current_time().await, time);
-            })
-            .await;
-        })
-        .await;
     }
 }
