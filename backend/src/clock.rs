@@ -23,6 +23,12 @@ lazy_static! {
     static ref FROZEN_TIME: Mutex<Option<DateTime<Utc>>> = Mutex::new(None);
 }
 
+#[cfg(not(test))]
+pub async fn current_time() -> DateTime<Utc> {
+    Utc::now()
+}
+
+#[cfg(test)]
 pub async fn current_time() -> DateTime<Utc> {
     if let Some(time) = *FROZEN_TIME.lock().await {
         time
