@@ -1,4 +1,4 @@
-use super::{authenticate, empty_response, get_auth_token};
+use super::{authenticate, empty_response, get_auth_token, something_went_wrong};
 use crate::env;
 use crate::responses::BuildApiResponse;
 use crate::{BackendApiEndpoint, State};
@@ -15,61 +15,64 @@ use shared::payloads::CreateUserPayload;
 use shared::payloads::LoginPayload;
 use shared::{
     responses::{TokenResponse, UserResponse},
-    GetUser, NoPayload,
+    *,
 };
 use sqlx::{query, query_as, PgPool};
 use tide::Request;
-use tide::Response;
 use tide::{Error, StatusCode};
 use uuid::Uuid;
 
-pub async fn create(mut req: Request<State>) -> tide::Result {
-    let create_user = req.body_json::<CreateUserPayload>().await?;
-    let db_pool = &req.state().db_pool;
+#[async_trait]
+impl BackendApiEndpoint for CreateUser {
+    async fn handler(
+        req: Request<State>,
+        create_user: CreateUserPayload,
+    ) -> tide::Result<(<Self as ApiEndpoint>::Response, StatusCode)> {
+        let db_pool = &req.state().db_pool;
 
-    if username_already_claimed(&create_user.username, &db_pool).await? {
-        return Err(Error::from_str(
-            StatusCode::UnprocessableEntity,
-            "Username is already claimed",
-        ));
-    }
+        if username_already_claimed(&create_user.username, &db_pool).await? {
+            return Err(Error::from_str(
+                StatusCode::UnprocessableEntity,
+                "Username is already claimed",
+            ));
+        }
 
-    let secret_key = std::env::var("SECRET_KEY")?;
-    let clear_text_password = create_user.password.clone();
-    let mut hasher = Hasher::default();
+        let secret_key = std::env::var("SECRET_KEY")?;
+        let clear_text_password = create_user.password.clone();
+        let mut hasher = Hasher::default();
 
-    if env::current().is_test() {
-        hasher.configure_iterations(1);
-    }
+        if env::current().is_test() {
+            hasher.configure_iterations(1);
+        }
 
-    let hashed_password = Compat01As03::new(
-        hasher
-            .with_password(clear_text_password)
-            .with_secret_key(secret_key)
-            .hash_non_blocking(),
-    )
-    .await
-    .map_err(|err| err.compat())?;
+        let hashed_password = Compat01As03::new(
+            hasher
+                .with_password(clear_text_password)
+                .with_secret_key(secret_key)
+                .hash_non_blocking(),
+        )
+        .await
+        .map_err(|err| err.compat())?;
 
-    let now = Utc::now();
-    let row = query!(
-        r#"
+        let now = Utc::now();
+        let row = query!(
+            r#"
             insert into users (id, username, hashed_password, created_at, updated_at)
             values ($1, $2, $3, $4, $5) returning id
         "#,
-        Uuid::new_v4(),
-        create_user.username,
-        hashed_password,
-        now,
-        now,
-    )
-    .fetch_one(db_pool)
-    .await?;
-    let user_id = row.id;
+            Uuid::new_v4(),
+            create_user.username,
+            hashed_password,
+            now,
+            now,
+        )
+        .fetch_one(db_pool)
+        .await?;
+        let user_id = row.id;
 
-    let raw_token: String = OsRng.sample_iter(&Alphanumeric).take(32).collect();
-    let token = query!(
-        r#"
+        let raw_token: String = OsRng.sample_iter(&Alphanumeric).take(32).collect();
+        let token = query!(
+            r#"
                     insert into auth_tokens (
                         id,
                         user_id,
@@ -79,16 +82,17 @@ pub async fn create(mut req: Request<State>) -> tide::Result {
                     )
                     values ($1, $2, $3, $4, $5) returning token
                 "#,
-        Uuid::new_v4(),
-        user_id,
-        raw_token,
-        now,
-        now,
-    )
-    .fetch_one(db_pool)
-    .await?;
+            Uuid::new_v4(),
+            user_id,
+            raw_token,
+            now,
+            now,
+        )
+        .fetch_one(db_pool)
+        .await?;
 
-    TokenResponse::new(&token.token).to_response_with_status(StatusCode::Created)
+        Ok((TokenResponse::new(&token.token), StatusCode::Created))
+    }
 }
 
 async fn username_already_claimed(username: &str, db_pool: &PgPool) -> tide::Result<bool> {
@@ -99,55 +103,61 @@ async fn username_already_claimed(username: &str, db_pool: &PgPool) -> tide::Res
     Ok(row.is_some())
 }
 
-pub async fn login(mut req: Request<State>) -> tide::Result {
-    let username = req.param::<String>("username")?;
-    let password = req.body_json::<LoginPayload>().await?.password;
+#[async_trait]
+impl BackendApiEndpoint for Login {
+    async fn handler(
+        req: Request<State>,
+        payload: LoginPayload,
+    ) -> tide::Result<(<Self as ApiEndpoint>::Response, StatusCode)> {
+        let username = req.param::<String>("username")?;
+        let password = payload.password;
 
-    let db_pool = req.state().db_pool.clone();
+        let db_pool = req.state().db_pool.clone();
 
-    let user = query!(
-        r#"
+        let user = query!(
+            r#"
             select id, hashed_password
             from users
             where username = $1
         "#,
-        username
-    )
-    .fetch_optional(&db_pool)
-    .await?;
-    let user = match user {
-        Some(user) => user,
-        None => return Err(Error::from_str(StatusCode::NotFound, "User not found")),
-    };
-    let user_password = user.hashed_password;
+            username
+        )
+        .fetch_optional(&db_pool)
+        .await?;
+        let user = match user {
+            Some(user) => user,
+            None => return Err(Error::from_str(StatusCode::NotFound, "User not found")),
+        };
+        let user_password = user.hashed_password;
 
-    let secret_key = std::env::var("SECRET_KEY")?;
-    let mut verifier = Verifier::default();
-    let is_valid = Compat01As03::new(
-        verifier
-            .with_hash(user_password)
-            .with_password(password)
-            .with_secret_key(secret_key)
-            .verify_non_blocking(),
-    )
-    .await
-    .map_err(|err| err.compat())?;
+        let secret_key = std::env::var("SECRET_KEY")?;
+        let mut verifier = Verifier::default();
+        let is_valid = Compat01As03::new(
+            verifier
+                .with_hash(user_password)
+                .with_password(password)
+                .with_secret_key(secret_key)
+                .verify_non_blocking(),
+        )
+        .await
+        .map_err(|err| err.compat())?;
 
-    if is_valid {
-        let token_row = query!(
-            r#"
+        if is_valid {
+            let token_row = query!(
+                r#"
                 select token
                 from auth_tokens
                 where user_id = $1
             "#,
-            user.id
-        )
-        .fetch_one(&db_pool)
-        .await?;
+                user.id
+            )
+            .fetch_one(&db_pool)
+            .await?;
 
-        TokenResponse::new(&token_row.token).to_response_with_status(StatusCode::Created)
-    } else {
-        Ok(Response::new(StatusCode::Forbidden))
+            Ok((TokenResponse::new(&token_row.token), StatusCode::Created))
+        } else {
+            Err(something_went_wrong(StatusCode::Forbidden))
+        }
     }
 }
 

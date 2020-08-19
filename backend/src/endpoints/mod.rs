@@ -76,3 +76,7 @@ fn get_header<'a>(header_key: &str, req: &'a Request<State>) -> Result<&'a str, 
 pub fn empty_response() -> Result<Response, Error> {
     Value::Null.to_response()
 }
+
+pub fn something_went_wrong(status_code: StatusCode) -> tide::Error {
+    tide::Error::from_str(status_code, "Something went wrong")
+}
