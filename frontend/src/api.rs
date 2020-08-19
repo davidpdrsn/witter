@@ -1,4 +1,4 @@
-use crate::{Model, Msg, Error};
+use crate::{Error, Model, Msg};
 use payloads::{CreateTweetPayload, LoginPayload};
 use seed::{prelude::*, *};
 use shared::payloads::CreateUserPayload;
@@ -35,10 +35,33 @@ pub async fn reload_current_user(auth_token: String) -> Msg {
 pub async fn load_user(username: String, auth_token: Option<String>) -> Msg {
     fetch::<GetUser>(
         auth_token,
-        GetUserUrl { username: username.to_string() },
+        GetUserUrl {
+            username: username.to_string(),
+        },
         NoPayload,
         Msg::GetUserLoaded,
-    ).await
+    )
+    .await
+}
+
+pub async fn load_timeline(auth_token: Option<String>) -> Msg {
+    fetch::<Timeline>(
+        auth_token,
+        TimelineUrl,
+        NoPayload,
+        Msg::LoadTimelineEndpointResponded,
+    )
+    .await
+}
+
+pub async fn post_tweet(auth_token: Option<String>, text: String) -> Msg {
+    fetch::<PostTweet>(
+        auth_token,
+        PostTweetUrl,
+        CreateTweetPayload { text },
+        Msg::PostTweetEndpointResponded,
+    )
+    .await
 }
 
 pub async fn fetch<E>(

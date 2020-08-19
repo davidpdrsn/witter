@@ -54,7 +54,7 @@ impl BackendApiEndpoint for CreateUser {
         .await
         .map_err(|err| err.compat())?;
 
-        let now = Utc::now();
+        let now = crate::clock::current_time().await;
         let row = query!(
             r#"
             insert into users (id, username, hashed_password, created_at, updated_at)
@@ -185,7 +185,7 @@ pub async fn follow(req: Request<State>) -> tide::Result {
         ));
     }
 
-    let now = Utc::now();
+    let now = crate::clock::current_time().await;
     let rows_inserted = query!(
         r#"
             insert into follows (id, follower_id, followee_id, created_at, updated_at)

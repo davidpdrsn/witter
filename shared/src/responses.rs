@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -33,6 +34,14 @@ pub struct UserResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TweetResponse {
+    pub id: Uuid,
+    pub text: String,
+    pub created_at: DateTime<Utc>,
+    pub user: UserResponse,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostTweetResponse {
     pub id: Uuid,
     pub text: String,
 }

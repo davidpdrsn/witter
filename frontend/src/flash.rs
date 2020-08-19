@@ -1,5 +1,5 @@
-use seed::prelude::Orders;
 use crate::Msg;
+use seed::prelude::Orders;
 
 #[derive(Debug, Default)]
 pub struct Flash {

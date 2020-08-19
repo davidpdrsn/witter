@@ -3,7 +3,11 @@ use crate::{BackendApiEndpoint, State};
 use async_trait::async_trait;
 use chrono::Utc;
 use shared::MAX_TWEET_LENGTH;
-use shared::{payloads::CreateTweetPayload, responses::TweetResponse, PostTweet};
+use shared::{
+    payloads::CreateTweetPayload,
+    responses::{ApiResponse, PostTweetResponse, TweetResponse},
+    ApiEndpoint, PostTweet,
+};
 use sqlx::query;
 use tide::{Error, Request, StatusCode};
 use uuid::Uuid;
@@ -13,7 +17,7 @@ impl BackendApiEndpoint for PostTweet {
     async fn handler(
         req: Request<State>,
         create_tweet: CreateTweetPayload,
-    ) -> tide::Result<(TweetResponse, StatusCode)> {
+    ) -> tide::Result<(<Self as ApiEndpoint>::Response, StatusCode)> {
         let db_pool = req.state().db_pool.clone();
 
         if create_tweet.text.len() > MAX_TWEET_LENGTH {
@@ -25,7 +29,7 @@ impl BackendApiEndpoint for PostTweet {
 
         let user = authenticate(&req).await?;
 
-        let now = Utc::now();
+        let now = crate::clock::current_time().await;
         let row = query!(
             r#"
             insert into tweets (id, user_id, text, created_at, updated_at)
@@ -41,7 +45,7 @@ impl BackendApiEndpoint for PostTweet {
         .await?;
 
         Ok((
-            TweetResponse {
+            PostTweetResponse {
                 id: row.id,
                 text: row.text,
             },

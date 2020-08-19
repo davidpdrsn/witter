@@ -13,6 +13,7 @@ use tide::{Body, Request, Response, Server, StatusCode};
 #[cfg(test)]
 mod tests;
 
+mod clock;
 mod endpoints;
 mod env;
 mod middlewares;
@@ -49,7 +50,6 @@ async fn server(db_pool: PgPool) -> Server<State> {
     server.with(middlewares::ErrorReponseToJson);
 
     add_endpoint::<CreateUser>(&mut server);
-    // server.at("/users").post(endpoints::users::create);
 
     add_endpoint::<Login>(&mut server);
 
@@ -70,7 +70,7 @@ async fn server(db_pool: PgPool) -> Server<State> {
     add_endpoint::<GetUser>(&mut server);
 
     add_endpoint::<Me>(&mut server);
-    server.at("/me/timeline").get(endpoints::me::timeline);
+    add_endpoint::<Timeline>(&mut server);
 
     add_endpoint::<PostTweet>(&mut server);
 
